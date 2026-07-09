@@ -35,11 +35,15 @@ def test_playwright_fetcher_returns_page_content():
 @pytest.mark.playwright
 def test_playwright_fetcher_integration():
     pytest.importorskip("playwright")
+    from playwright.sync_api import Error as PlaywrightError
     from playwright.sync_api import sync_playwright
 
-    with sync_playwright() as p:
-        if not p.chromium.launch(headless=True):
-            pytest.skip("Chromium not installed")
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            browser.close()
+    except PlaywrightError as exc:
+        pytest.skip(f"Chromium not available: {exc}")
 
     fetcher = PlaywrightFetcher()
     html = fetcher.fetch_html(

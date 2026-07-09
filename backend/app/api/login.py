@@ -13,6 +13,9 @@ from app.schemas.auth import (
     RefreshTokenRequest,
     TokenResponse,
 )
+from app.schemas.user import UserResponse
+from app.dependencies.auth import get_current_user
+from app.models.models import User
 from app.services.jwt_tokens import JwtTokenService, TokenError
 from app.services.login import LoginError, LoginService
 
@@ -140,3 +143,8 @@ def logout(payload: LogoutRequest, db: Session = Depends(get_db)):
 
     token_service.revoke_session(session)
     logger.info("User logged out", extra={"user_id": str(session.user_id)})
+
+
+@router.get("/auth/me", response_model=UserResponse)
+def get_current_user_profile(user: User = Depends(get_current_user)):
+    return user

@@ -81,12 +81,16 @@ services:
       dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8001
+        NEXT_PUBLIC_SOCIAL_AUTH_DEBUG: "true"
     container_name: chicmatrix-frontend
+    environment:
+      API_INTERNAL_URL: http://backend:8000
     ports:
       - "3002:3000"
     depends_on:
       - backend
     networks:
+      - chicmatrix-internal
       - chicmatrix-public
     logging: *default-logging
 

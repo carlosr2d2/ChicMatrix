@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Header, FeaturedGrid, StatusBanner } from "@/components/HomeSections";
 import { getHealth } from "@/lib/api";
 import { processSteps } from "@/lib/data";
+import Link from "next/link";
 
 export default async function Home() {
   const health = await getHealth();
@@ -25,8 +26,12 @@ export default async function Home() {
               with live price comparison across premium retailers.
             </p>
             <div className="flex flex-wrap gap-4">
-              <button className="btn-primary">Get recommendations</button>
-              <button className="btn-outline">Explore catalog</button>
+              <Link href="/register" className="btn-primary">
+                Get recommendations
+              </Link>
+              <Link href="/login" className="btn-outline">
+                Sign in
+              </Link>
             </div>
           </div>
           <div className="relative aspect-[4/5] max-h-[600px]">

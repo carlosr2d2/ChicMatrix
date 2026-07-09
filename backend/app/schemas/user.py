@@ -25,6 +25,7 @@ class UserResponse(UserAuthBase, UserProfileBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    role: str = "user"
     consent_given_at: datetime | None = None
     consent_version: str | None = None
     created_at: datetime

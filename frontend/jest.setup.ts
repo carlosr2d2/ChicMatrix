@@ -18,3 +18,19 @@ jest.mock("next/link", () => ({
     href: string;
   }) => React.createElement("a", { href, ...rest }, children),
 }));
+
+const mockPush = jest.fn();
+const mockRefresh = jest.fn();
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush, replace: jest.fn(), refresh: mockRefresh }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/",
+}));
+
+beforeEach(() => {
+  mockPush.mockClear();
+  mockRefresh.mockClear();
+});
+
+export { mockPush, mockRefresh };

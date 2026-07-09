@@ -8,7 +8,7 @@ describe("Header", () => {
 
     expect(screen.getByText("ChicMatrix")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Collection" })).toHaveAttribute("href", "#collection");
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
   });
 });
 

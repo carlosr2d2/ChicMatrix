@@ -15,7 +15,9 @@ export function Header() {
           <Link href="#how-it-works" className="hover:text-ink transition-colors">How it works</Link>
           <Link href="#status" className="hover:text-ink transition-colors">Status</Link>
         </nav>
-        <button className="btn-primary text-xs">Sign in</button>
+        <Link href="/login" className="btn-primary text-xs">
+          Sign in
+        </Link>
       </div>
     </header>
   );

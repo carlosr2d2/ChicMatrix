@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, Lato } from "next/font/google";
 import "./globals.css";
 
+import { Providers } from "./providers";
+
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
@@ -27,7 +29,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${lato.variable}`}>
-      <body>{children}</body>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
