@@ -22,5 +22,10 @@ export default defineConfig({
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
+        env: {
+          NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001",
+          NEXT_PUBLIC_SOCIAL_AUTH_DEBUG: process.env.NEXT_PUBLIC_SOCIAL_AUTH_DEBUG ?? "true",
+          API_INTERNAL_URL: process.env.API_INTERNAL_URL ?? "http://localhost:8001",
+        },
       },
 });

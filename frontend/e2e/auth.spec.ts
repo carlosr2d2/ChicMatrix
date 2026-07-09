@@ -46,8 +46,17 @@ test.describe("Auth flow", () => {
     await page.getByRole("checkbox").first().check();
     await page.getByRole("button", { name: "Create account" }).click();
 
-    const tokenBlock = page.locator("code").first();
-    await expect(tokenBlock).toBeVisible({ timeout: 15_000 });
+    const successAlert = page.getByRole("status").filter({ hasText: /registration|successful/i });
+    const errorAlert = page.getByRole("alert");
+    await expect(successAlert.or(errorAlert)).toBeVisible({ timeout: 15_000 });
+
+    if (await errorAlert.isVisible()) {
+      const errorText = await errorAlert.textContent();
+      throw new Error(`Registration failed: ${errorText}`);
+    }
+
+    const tokenBlock = page.getByRole("status").locator("code");
+    await expect(tokenBlock).toBeVisible({ timeout: 5_000 });
     const token = (await tokenBlock.textContent())?.trim();
     expect(token).toBeTruthy();
 
