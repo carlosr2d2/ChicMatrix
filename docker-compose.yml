@@ -1,0 +1,156 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: chicmatrix-db
+    environment:
+      POSTGRES_USER: chicmatrix
+      POSTGRES_PASSWORD: chicmatrix
+      POSTGRES_DB: chicmatrix
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - chicmatrix-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chicmatrix -d chicmatrix"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    container_name: chicmatrix-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - chicmatrix-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging: *default-logging
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: chicmatrix-backend
+    environment:
+      DATABASE_URL: postgresql://chicmatrix:chicmatrix@db:5432/chicmatrix
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      CORS_ORIGINS: http://localhost:3002,http://frontend:3000
+      LOG_LEVEL: INFO
+    ports:
+      - "8001:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - chicmatrix-internal
+      - chicmatrix-public
+    logging: *default-logging
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8001
+    container_name: chicmatrix-frontend
+    ports:
+      - "3002:3000"
+    depends_on:
+      - backend
+    networks:
+      - chicmatrix-public
+    logging: *default-logging
+
+  worker:
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://chicmatrix:chicmatrix@db:5432/chicmatrix
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      LOG_LEVEL: INFO
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - chicmatrix-internal
+    logging: *default-logging
+
+  flower:
+    image: mher/flower:2.0.1
+    container_name: chicmatrix-flower
+    command: celery --broker=redis://redis:6379/0 flower --port=5555
+    ports:
+      - "5556:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - chicmatrix-internal
+      - chicmatrix-public
+    logging: *default-logging
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: chicmatrix-prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    ports:
+      - "9090:9090"
+    networks:
+      - chicmatrix-internal
+      - chicmatrix-public
+    logging: *default-logging
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    container_name: chicmatrix-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: chicmatrix
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - chicmatrix-public
+    logging: *default-logging
+
+networks:
+  chicmatrix-internal:
+    driver: bridge
+  chicmatrix-public:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

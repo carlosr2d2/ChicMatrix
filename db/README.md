@@ -1,0 +1,3 @@
+-- ChicMatrix database initialization placeholder.
+-- Schema is managed by Alembic migrations (backend).
+-- Demo data is seeded at backend startup via app/seed.py.

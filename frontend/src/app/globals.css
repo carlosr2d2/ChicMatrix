@@ -1,0 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Lato:wght@300;400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-ink: #1a1a1a;
+  --color-stone: #8a8580;
+  --color-sand: #e8e4df;
+  --color-cream: #f7f5f2;
+  --color-white: #ffffff;
+}
+
+body {
+  @apply bg-cream text-ink font-sans antialiased;
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 bg-ink text-white text-sm font-medium tracking-wide uppercase transition-colors hover:bg-stone-800;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center px-6 py-3 border border-ink text-ink text-sm font-medium tracking-wide uppercase transition-colors hover:bg-ink hover:text-white;
+  }
+
+  .section-title {
+    @apply font-display text-3xl md:text-4xl font-light tracking-tight;
+  }
+}
