@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
 
+function emailField(page: import("@playwright/test").Page) {
+  return page.getByRole("textbox", { name: "Email" });
+}
+
+function passwordField(page: import("@playwright/test").Page) {
+  return page.getByRole("textbox", { name: "Password" });
+}
+
 test.describe("Auth UI", () => {
   test("register page renders all methods", async ({ page }) => {
     await page.goto("/register");
@@ -7,23 +15,23 @@ test.describe("Auth UI", () => {
     await expect(page.getByRole("tab", { name: "Email" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Phone" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Social" })).toBeVisible();
-    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(emailField(page)).toBeVisible();
   });
 
   test("login page renders email form", async ({ page }) => {
     await page.goto("/login");
     await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
-    await expect(page.getByLabel("Email")).toBeVisible();
-    await expect(page.getByLabel("Password")).toBeVisible();
+    await expect(emailField(page)).toBeVisible();
+    await expect(passwordField(page)).toBeVisible();
   });
 
   test("verify page renders email and phone panels", async ({ page }) => {
     await page.goto("/verify");
     await expect(page.getByRole("heading", { name: "Verify your account" })).toBeVisible();
-    await expect(page.getByLabel("Email verification token")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Email verification token" })).toBeVisible();
     await page.getByRole("tab", { name: "Phone" }).click();
-    await expect(page.getByLabel("Phone number")).toBeVisible();
-    await expect(page.getByLabel("OTP code")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Phone number" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "OTP code" })).toBeVisible();
   });
 
   test("shows validation errors on empty email register", async ({ page }) => {
@@ -41,8 +49,8 @@ test.describe("Auth flow", () => {
     const email = `playwright.${Date.now()}@chicmatrix.app`;
 
     await page.goto("/register");
-    await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Password", { exact: true }).fill("SecurePass123");
+    await emailField(page).fill(email);
+    await page.locator("#register-password").fill("SecurePass123");
     await page.getByRole("checkbox").first().check();
     await page.getByRole("button", { name: "Create account" }).click();
 
@@ -65,8 +73,8 @@ test.describe("Auth flow", () => {
     await expect(page.getByText(/verified/i)).toBeVisible({ timeout: 10_000 });
 
     await page.goto("/login");
-    await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Password").fill("SecurePass123");
+    await emailField(page).fill(email);
+    await page.locator("#login-password").fill("SecurePass123");
     await page.getByRole("button", { name: "Sign in" }).click();
 
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
