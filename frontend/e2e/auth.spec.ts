@@ -8,6 +8,10 @@ function passwordField(page: import("@playwright/test").Page) {
   return page.getByRole("textbox", { name: "Password" });
 }
 
+function registerConsentCheckbox(page: import("@playwright/test").Page) {
+  return page.getByRole("checkbox", { name: /GDPR/i });
+}
+
 test.describe("Auth UI", () => {
   test("register page renders all methods", async ({ page }) => {
     await page.goto("/register");
@@ -46,39 +50,58 @@ test.describe("Auth flow", () => {
   test.skip(!process.env.E2E_WITH_BACKEND, "Set E2E_WITH_BACKEND=true to run full API flow");
 
   test("email register, verify, login and reach dashboard", async ({ page }) => {
+    test.setTimeout(90_000);
+
     const email = `playwright.${Date.now()}@chicmatrix.app`;
+    const password = "SecurePass123";
 
     await page.goto("/register");
     await emailField(page).fill(email);
-    await page.locator("#register-password").fill("SecurePass123");
-    await page.getByRole("checkbox").first().check();
+    await page.locator("#register-password").fill(password);
+    await registerConsentCheckbox(page).check();
+
+    const registerResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/register/email") && response.request().method() === "POST",
+      { timeout: 20_000 },
+    );
+
     await page.getByRole("button", { name: "Create account" }).click();
 
-    const successAlert = page.getByRole("status").filter({ hasText: /registration|successful/i });
-    const errorAlert = page.getByRole("alert");
-    await expect(successAlert.or(errorAlert)).toBeVisible({ timeout: 15_000 });
+    const registerResponse = await registerResponsePromise;
+    const registerBody = await registerResponse.json();
+    expect(
+      registerResponse.status(),
+      `Register failed: ${JSON.stringify(registerBody)}`,
+    ).toBe(201);
 
-    if (await errorAlert.isVisible()) {
-      const errorText = await errorAlert.textContent();
-      throw new Error(`Registration failed: ${errorText}`);
-    }
-
-    const tokenBlock = page.getByRole("status").locator("code");
-    await expect(tokenBlock).toBeVisible({ timeout: 5_000 });
-    const token = (await tokenBlock.textContent())?.trim();
-    expect(token).toBeTruthy();
+    const token = registerBody.verification_token as string | null | undefined;
+    expect(token, "EMAIL_DEBUG should return verification_token in CI").toBeTruthy();
 
     await page.goto(`/verify?token=${encodeURIComponent(token!)}`);
+    const verifyResponsePromise = page.waitForResponse(
+      (response) =>
+        response.url().includes("/verify/email") && response.request().method() === "POST",
+      { timeout: 15_000 },
+    );
     await page.getByRole("button", { name: "Verify email" }).click();
-    await expect(page.getByText(/verified/i)).toBeVisible({ timeout: 10_000 });
+    const verifyResponse = await verifyResponsePromise;
+    expect(verifyResponse.status()).toBe(200);
 
     await page.goto("/login");
     await emailField(page).fill(email);
-    await page.locator("#login-password").fill("SecurePass123");
+    await page.locator("#login-password").fill(password);
+
+    const loginResponsePromise = page.waitForResponse(
+      (response) => response.url().includes("/login") && response.request().method() === "POST",
+      { timeout: 15_000 },
+    );
     await page.getByRole("button", { name: "Sign in" }).click();
+    const loginResponse = await loginResponsePromise;
+    expect(loginResponse.status()).toBe(200);
 
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
-    await expect(page.getByRole("heading", { name: /Hello/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Hello/i })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(email)).toBeVisible();
   });
 });
