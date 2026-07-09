@@ -86,6 +86,7 @@ def sample_user(db_session):
     user = User(
         email="test@chicmatrix.app",
         name="Test User",
+        verified=True,
         height_cm=170.0,
         weight_kg=65.0,
         body_proportions={"waist_cm": 74},

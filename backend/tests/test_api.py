@@ -39,7 +39,7 @@ def test_enqueue_scrape_inactive_retailer(client: TestClient, db_session):
 
 
 def test_recommend_user_not_found(client: TestClient):
-    response = client.get("/recommend/999")
+    response = client.get("/recommend/00000000-0000-0000-0000-000000000099")
     assert response.status_code == 404
 
 
@@ -47,5 +47,5 @@ def test_recommend_success(client: TestClient, sample_user, sample_product_with_
     response = client.get(f"/recommend/{sample_user.id}")
     assert response.status_code == 200
     data = response.json()
-    assert data["user_id"] == sample_user.id
+    assert data["user_id"] == str(sample_user.id)
     assert len(data["recommendations"]) >= 1

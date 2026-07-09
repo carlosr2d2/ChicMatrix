@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -130,6 +131,9 @@ DEMO_RETAILERS = [
 DEMO_USER = {
     "email": "demo@chicmatrix.app",
     "name": "Alex Rivera",
+    "verified": True,
+    "consent_given_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+    "consent_version": "1.0",
     "height_cm": 172.0,
     "weight_kg": 68.0,
     "body_proportions": {"waist_cm": 76, "hips_cm": 98, "shoulders_cm": 42},

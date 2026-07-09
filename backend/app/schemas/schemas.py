@@ -1,28 +1,12 @@
 from datetime import datetime
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class HealthResponse(BaseModel):
     status: str
     service: str
-
-
-class UserBase(BaseModel):
-    email: EmailStr
-    name: str
-    height_cm: float | None = None
-    weight_kg: float | None = None
-    body_proportions: dict | None = None
-    preferences: dict | None = None
-    habits: dict | None = None
-
-
-class UserResponse(UserBase):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    created_at: datetime
 
 
 class RetailerResponse(BaseModel):
@@ -64,7 +48,7 @@ class RecommendationItem(BaseModel):
 
 
 class RecommendationResponse(BaseModel):
-    user_id: int
+    user_id: UUID
     recommendations: list[RecommendationItem]
 
 
