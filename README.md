@@ -12,6 +12,16 @@ Frontend (Next.js) -> Backend (FastAPI) -> PostgreSQL
               Flower / Prometheus / Grafana
 ```
 
+Product data flow (scrapes are **admin-only**, customers only read):
+
+```
+Admin UI / POST /scrape/{id}
+        → Redis queue
+        → Celery worker (fixture or HTTP/Playwright)
+        → products + prices
+Customers → GET /products, PATCH profile, GET /recommend/me
+```
+
 ## Quick start
 
 ```bash
@@ -29,6 +39,37 @@ docker compose up --build
 
 Grafana credentials: `admin` / `chicmatrix`
 
+## Seed accounts
+
+| Email | Password | Role |
+|-------|----------|------|
+| `demo@chicmatrix.app` | `DemoPass123` | customer |
+| `admin@chicmatrix.app` | `AdminPass123` | admin (`admin:scrape`) |
+
+## Product loop (E2E)
+
+Use this path to verify the full system after `docker compose up --build`:
+
+1. **Health** — `curl http://localhost:8001/health` → `{"status":"ok",...}`
+2. **Admin scrape** — login as `admin@chicmatrix.app` → [http://localhost:3002/admin](http://localhost:3002/admin) → enqueue Maison Noir / Urban Loom / Atelier Vue
+3. **Worker** — Flower [http://localhost:5556](http://localhost:5556) → tasks `SUCCESS`
+4. **Catalog** — home [http://localhost:3002](http://localhost:3002) → Featured pieces show names, images, prices (`GET /products`)
+5. **Customer profile** — login as `demo@chicmatrix.app` → [http://localhost:3002/profile](http://localhost:3002/profile) → save colors/brands/occasions
+6. **Recommendations** — [http://localhost:3002/recommendations](http://localhost:3002/recommendations) → ranked picks with match score, reasons, best price
+
+Customers never trigger scrapes. Only admins enqueue work; workers write the catalog.
+
+### System-ready checklist
+
+- [ ] `docker compose ps` — backend, frontend, worker, db, redis healthy
+- [ ] `/health` returns ok
+- [ ] At least one scrape task SUCCEEDED in Flower
+- [ ] `GET /products` returns items with `latest_price` and `image_url`
+- [ ] Demo user can open `/profile` and save preferences
+- [ ] `/recommendations` shows scored items (or a clear empty state if catalog is empty)
+- [ ] Non-admin cannot `POST /scrape/{id}` (403)
+- [ ] Backend `pytest` and frontend `npm test` pass
+
 ## API endpoints
 
 | Method | Endpoint                  | Description                    |
@@ -43,22 +84,30 @@ Grafana credentials: `admin` / `chicmatrix`
 | GET    | `/users/me`               | Current user fashion profile   |
 | GET    | `/metrics`                | Prometheus metrics             |
 
-### Admin scrape (seed credentials)
+### UI routes
 
-| Email | Password | Role |
-|-------|----------|------|
-| `admin@chicmatrix.app` | `AdminPass123` | admin |
-
-Use http://localhost:3002/admin after login to enqueue worker scrapes.
-
-Fashion profile UI: http://localhost:3002/profile (requires login).
+| Path | Who | Purpose |
+|------|-----|---------|
+| `/` | public | Live catalog |
+| `/login` `/register` | public | Auth |
+| `/dashboard` | logged-in | Account + CTAs |
+| `/profile` | logged-in | Fashion profile |
+| `/recommendations` | logged-in | Personalized picks |
+| `/admin` | admin | Enqueue scrapes |
 
 ## Example usage
 
 ```bash
 curl http://localhost:8001/health
-curl -X POST http://localhost:8001/scrape/1
-curl http://localhost:8001/recommend/1
+
+# Login (email method)
+curl -X POST http://localhost:8001/login \
+  -H "Content-Type: application/json" \
+  -d '{"method":"email","email":"admin@chicmatrix.app","password":"AdminPass123"}'
+
+curl -X POST http://localhost:8001/scrape/1 -H "Authorization: Bearer <admin_token>"
+curl http://localhost:8001/products
+curl http://localhost:8001/recommend/me -H "Authorization: Bearer <demo_token>"
 ```
 
 ## Testing
@@ -66,11 +115,14 @@ curl http://localhost:8001/recommend/1
 ### Backend (Pytest)
 
 ```bash
-cd backend
-pip install -r requirements.txt
-playwright install chromium
-pytest -v
+# Local
+cd backend && pip install -r requirements.txt && playwright install chromium && pytest -v
+
+# Or inside Docker
+docker compose exec backend pytest -v
 ```
+
+Coverage for the product loop includes catalog/profile/recommend (`tests/test_catalog_and_profile.py`), admin scrape auth (`tests/test_api.py`), and fixture scraping (`tests/test_scraping.py`).
 
 ### Frontend (Jest)
 
@@ -78,7 +130,39 @@ pytest -v
 cd frontend
 npm install
 npm test
+# CI-style:
+npm run test:ci
 ```
+
+Jest covers `CatalogGrid`, `RecommendationsGrid`, `ProfileForm`, and API client helpers.
+
+## Demo-safe scraping fixtures
+
+Seed retailers scrape **local HTML fixtures** (not live storefronts), so the pipeline stays offline-friendly:
+
+| Retailer | `listing_url` |
+|----------|---------------|
+| Maison Noir | `fixture://maison_noir.html` |
+| Urban Loom | `fixture://urban_loom.html` |
+| Atelier Vue | `fixture://atelier_vue.html` |
+
+Fixtures live in `backend/fixtures/scraping/`. The worker parses them with the same BeautifulSoup selectors used for real HTTP pages.
+
+```json
+{
+  "engine": "httpx",
+  "listing_url": "fixture://maison_noir.html",
+  "currency": "USD",
+  "selectors": {
+    "item": "article.product",
+    "name": ".product-title",
+    "price": ".price",
+    "color": ".color"
+  }
+}
+```
+
+Supported local sources: `fixture://file.html`, optional `fixture` config key, or `file:///...` paths. Override the fixtures directory with `SCRAPING_FIXTURES_DIR`.
 
 ## Playwright scraping
 

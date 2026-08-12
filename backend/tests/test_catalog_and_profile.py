@@ -60,6 +60,17 @@ def test_list_retailers(client: TestClient, sample_retailer):
     assert any(r["name"] == sample_retailer.name for r in data["items"])
 
 
+def test_get_my_profile(client: TestClient, db_session):
+    headers = _auth_headers(client, db_session, email="me@chicmatrix.app")
+    response = client.get("/users/me", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == "me@chicmatrix.app"
+    assert data["role"] == UserRole.USER.value
+    assert "preferences" in data
+    assert "habits" in data
+
+
 def test_update_my_profile(client: TestClient, db_session):
     headers = _auth_headers(client, db_session, email="profile@chicmatrix.app")
 
@@ -103,7 +114,12 @@ def test_recommend_me(client: TestClient, db_session, sample_product_with_price)
     data = response.json()
     assert "recommendations" in data
     assert len(data["recommendations"]) >= 1
-    assert data["recommendations"][0]["product"]["name"] == "Linen Shirt"
+    item = data["recommendations"][0]
+    assert item["product"]["name"] == "Linen Shirt"
+    assert isinstance(item["score"], (int, float))
+    assert isinstance(item["reasons"], list)
+    assert isinstance(item["prices"], list)
+    assert "best_price" in item
 
 
 def test_recommend_me_requires_auth(client: TestClient):

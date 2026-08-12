@@ -1,6 +1,9 @@
+from pathlib import Path
+
 import pytest
 
-from app.services.scraping import ScrapingService
+from app.models.models import Price, Product, Retailer
+from app.services.scraping import ScrapingService, scraping_fixtures_dir
 
 
 def test_scrape_demo_retailer_creates_products(db_session, sample_retailer):
@@ -9,8 +12,6 @@ def test_scrape_demo_retailer_creates_products(db_session, sample_retailer):
 
     assert result["products_created"] == 1
     assert result["total"] == 1
-
-    from app.models.models import Product, Price
 
     products = db_session.query(Product).all()
     prices = db_session.query(Price).all()
@@ -35,6 +36,124 @@ def test_scrape_unknown_retailer_raises(db_session):
         service.scrape_retailer(999)
 
 
+def test_scrape_fixture_listing_creates_products_and_prices(db_session):
+    fixture = scraping_fixtures_dir() / "maison_noir.html"
+    assert fixture.is_file()
+
+    retailer = Retailer(
+        name="Fixture Boutique",
+        base_url="https://fixture-boutique.demo",
+        scraping_config={
+            "engine": "httpx",
+            "listing_url": "fixture://maison_noir.html",
+            "currency": "USD",
+            "selectors": {
+                "item": "article.product",
+                "name": ".product-title",
+                "price": ".price",
+                "image": "img",
+                "link": "a",
+                "brand": ".brand",
+                "category": ".category",
+                "color": ".color",
+            },
+        },
+        is_active=True,
+    )
+    db_session.add(retailer)
+    db_session.commit()
+    db_session.refresh(retailer)
+
+    service = ScrapingService(db_session)
+    result = service.scrape_retailer(retailer.id)
+
+    assert result["products_created"] == 4
+    assert result["total"] == 4
+
+    products = (
+        db_session.query(Product).filter(Product.retailer_id == retailer.id).order_by(Product.id).all()
+    )
+    prices = db_session.query(Price).filter(Price.retailer_id == retailer.id).all()
+
+    assert {p.name for p in products} >= {
+        "Structured Wool Blazer",
+        "Cashmere Crewneck",
+    }
+    blazer = next(p for p in products if p.name == "Structured Wool Blazer")
+    assert blazer.brand == "Maison Noir"
+    assert blazer.color == "black"
+    assert blazer.image_url and blazer.image_url.startswith("https://")
+    assert len(prices) == 4
+    assert any(price.amount == 289.0 for price in prices)
+
+
+def test_scrape_file_listing_url(db_session, tmp_path):
+    html = """
+    <article class="product">
+      <h3 class="product-title">Local Coat</h3>
+      <span class="price" data-price="99">$99</span>
+      <img src="https://example.com/coat.jpg" />
+      <a href="/product/local-coat"></a>
+      <span class="brand">Local Brand</span>
+      <span class="category">outerwear</span>
+      <span class="color">grey</span>
+    </article>
+    """
+    fixture_path = tmp_path / "local.html"
+    fixture_path.write_text(html, encoding="utf-8")
+    listing_url = fixture_path.resolve().as_uri()
+
+    retailer = Retailer(
+        name="File Boutique",
+        base_url="https://file-boutique.demo",
+        scraping_config={
+            "engine": "httpx",
+            "listing_url": listing_url,
+            "currency": "USD",
+            "selectors": {
+                "item": "article.product",
+                "name": ".product-title",
+                "price": ".price",
+                "image": "img",
+                "link": "a",
+                "brand": ".brand",
+                "category": ".category",
+                "color": ".color",
+            },
+        },
+        is_active=True,
+    )
+    db_session.add(retailer)
+    db_session.commit()
+    db_session.refresh(retailer)
+
+    result = ScrapingService(db_session).scrape_retailer(retailer.id)
+    assert result["products_created"] == 1
+    product = db_session.query(Product).filter(Product.retailer_id == retailer.id).one()
+    assert product.name == "Local Coat"
+    assert product.color == "grey"
+
+
+def test_missing_fixture_raises(db_session):
+    retailer = Retailer(
+        name="Missing Fixture Shop",
+        base_url="https://missing.demo",
+        scraping_config={
+            "engine": "httpx",
+            "listing_url": "fixture://does_not_exist.html",
+            "currency": "USD",
+            "selectors": {"item": "article.product", "name": ".product-title"},
+        },
+        is_active=True,
+    )
+    db_session.add(retailer)
+    db_session.commit()
+    db_session.refresh(retailer)
+
+    with pytest.raises(FileNotFoundError, match="does_not_exist"):
+        ScrapingService(db_session).scrape_retailer(retailer.id)
+
+
 @pytest.mark.parametrize(
     "raw,expected",
     [
@@ -46,3 +165,11 @@ def test_scrape_unknown_retailer_raises(db_session):
 )
 def test_parse_price(raw, expected):
     assert ScrapingService._parse_price(raw) == expected
+
+
+def test_scraping_fixtures_dir_contains_seed_html():
+    fixtures = scraping_fixtures_dir()
+    assert (fixtures / "maison_noir.html").is_file()
+    assert (fixtures / "urban_loom.html").is_file()
+    assert (fixtures / "atelier_vue.html").is_file()
+    assert Path(fixtures).name == "scraping"

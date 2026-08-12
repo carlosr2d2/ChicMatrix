@@ -1,6 +1,9 @@
 import logging
+import os
 import re
 from datetime import datetime, timezone
+from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -10,6 +13,14 @@ from app.models.models import Price, Product, Retailer
 from app.services.browser_fetcher import PlaywrightFetcher
 
 logger = logging.getLogger(__name__)
+
+
+def scraping_fixtures_dir() -> Path:
+  env = os.getenv("SCRAPING_FIXTURES_DIR")
+  if env:
+    return Path(env)
+  # backend/app/services/scraping.py -> backend/fixtures/scraping
+  return Path(__file__).resolve().parents[2] / "fixtures" / "scraping"
 
 
 class ScrapingService:
@@ -91,6 +102,10 @@ class ScrapingService:
     return result
 
   def _fetch_html(self, url: str, config: dict, headers: dict) -> str:
+    local_html = self._read_local_listing(url, config)
+    if local_html is not None:
+      return local_html
+
     engine = config.get("engine", "httpx")
     if engine == "playwright":
       if not PlaywrightFetcher.is_available():
@@ -103,6 +118,34 @@ class ScrapingService:
       response.raise_for_status()
       return response.text
 
+  def _read_local_listing(self, url: str, config: dict) -> str | None:
+    """Load HTML from fixture:// or file:// so scrapes stay demo-safe offline."""
+    fixture_name = config.get("fixture")
+    parsed = urlparse(url)
+
+    if fixture_name:
+      path = scraping_fixtures_dir() / fixture_name
+    elif parsed.scheme == "fixture":
+      # fixture://maison_noir.html or fixture:maison_noir.html
+      name = unquote(parsed.netloc or parsed.path).lstrip("/")
+      if not name:
+        raise ValueError(f"Invalid fixture listing_url: {url}")
+      path = scraping_fixtures_dir() / name
+    elif parsed.scheme == "file":
+      raw_path = unquote(parsed.path)
+      # file:///C:/foo.html → /C:/foo.html on Windows
+      if os.name == "nt" and re.match(r"^/[A-Za-z]:", raw_path):
+        raw_path = raw_path[1:]
+      path = Path(raw_path)
+    else:
+      return None
+
+    if not path.is_file():
+      raise FileNotFoundError(f"Scraping fixture not found: {path}")
+
+    logger.info("Loading scrape fixture", extra={"path": str(path)})
+    return path.read_text(encoding="utf-8")
+
   def _parse_item(self, item, selectors: dict, retailer: Retailer, idx: int) -> dict | None:
     name_sel = selectors.get("name", "h2, h3, .product-title, .title")
     price_sel = selectors.get("price", ".price, .product-price, [data-price]")
@@ -110,6 +153,7 @@ class ScrapingService:
     link_sel = selectors.get("link", "a")
     brand_sel = selectors.get("brand", ".brand")
     category_sel = selectors.get("category", ".category")
+    color_sel = selectors.get("color", ".color, [data-color]")
 
     name_el = item.select_one(name_sel)
     name = name_el.get_text(strip=True) if name_el else None
@@ -138,6 +182,12 @@ class ScrapingService:
 
     brand_el = item.select_one(brand_sel)
     category_el = item.select_one(category_sel)
+    color_el = item.select_one(color_sel)
+    color = None
+    if color_el:
+      color = color_el.get("data-color") or color_el.get_text(strip=True)
+    if not color:
+      color = selectors.get("default_color")
 
     return {
       "external_id": external_id,
@@ -146,7 +196,7 @@ class ScrapingService:
       "image_url": image_url,
       "brand": brand_el.get_text(strip=True) if brand_el else None,
       "category": category_el.get_text(strip=True) if category_el else selectors.get("default_category"),
-      "color": selectors.get("default_color"),
+      "color": color,
       "price": price,
     }
 
@@ -154,6 +204,7 @@ class ScrapingService:
     """Build synthetic DOM nodes from seed data for offline/demo retailers."""
     html_parts = []
     for item in demo_items:
+      color = item.get("color", "")
       html_parts.append(
         f'<article class="product">'
         f'<h3 class="product-title">{item["name"]}</h3>'
@@ -162,6 +213,7 @@ class ScrapingService:
         f'<a href="/product/{item.get("external_id", item["name"])}"></a>'
         f'<span class="brand">{item.get("brand", "")}</span>'
         f'<span class="category">{item.get("category", "")}</span>'
+        f'<span class="color">{color}</span>'
         f"</article>"
       )
     soup = BeautifulSoup("".join(html_parts), "lxml")
