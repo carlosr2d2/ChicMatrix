@@ -1,6 +1,7 @@
 import Image from "next/image";
 
-import { Header, FeaturedGrid, StatusBanner } from "@/components/HomeSections";
+import { Header, StatusBanner } from "@/components/HomeSections";
+import { CatalogGrid } from "@/components/CatalogGrid";
 import { getHealth } from "@/lib/api";
 import { processSteps } from "@/lib/data";
 import Link from "next/link";
@@ -26,7 +27,7 @@ export default async function Home() {
               with live price comparison across premium retailers.
             </p>
             <div className="flex flex-wrap gap-4">
-              <Link href="/register" className="btn-primary">
+              <Link href="/recommendations" className="btn-primary">
                 Get recommendations
               </Link>
               <Link href="/login" className="btn-outline">
@@ -48,7 +49,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <FeaturedGrid />
+      <CatalogGrid />
 
       <section id="how-it-works" className="py-24 border-t border-sand/60">
         <div className="max-w-7xl mx-auto px-6">

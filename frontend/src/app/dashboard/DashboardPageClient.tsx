@@ -95,12 +95,25 @@ export function DashboardPageClient() {
             <h2 className="text-sm tracking-[0.2em] uppercase text-stone-500 mb-4">Next steps</h2>
             <ul className="space-y-3 text-sm text-stone-600 font-light">
               <li>Complete your fashion profile for better recommendations.</li>
-              <li>Browse the curated collection on the homepage.</li>
-              <li>Track live prices from connected retailers.</li>
+              <li>View personalized picks ranked for your silhouette.</li>
+              <li>Browse the curated collection and live retailer prices.</li>
             </ul>
-            <Link href="/" className="btn-primary inline-flex mt-6 text-xs">
-              Explore collection
-            </Link>
+            <div className="flex flex-wrap gap-3 mt-6">
+              <Link href="/recommendations" className="btn-primary inline-flex text-xs">
+                View recommendations
+              </Link>
+              <Link href="/profile" className="btn-outline inline-flex text-xs">
+                Edit fashion profile
+              </Link>
+              <Link href="/" className="btn-outline inline-flex text-xs">
+                Explore collection
+              </Link>
+              {user.role === "admin" ? (
+                <Link href="/admin" className="btn-outline inline-flex text-xs">
+                  Admin scrapes
+                </Link>
+              ) : null}
+            </div>
           </section>
         </div>
       </main>

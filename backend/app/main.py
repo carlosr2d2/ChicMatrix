@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
-from app.api import health, login, recommend, register, scrape, social, verify
+from app.api import health, login, products, recommend, register, retailers, scrape, social, users, verify
 from app.config import settings
 from app.logging_config import setup_logging
 from app.metrics import REQUEST_COUNT, REQUEST_LATENCY
@@ -45,6 +45,9 @@ app.include_router(register.router)
 app.include_router(verify.router)
 app.include_router(social.router)
 app.include_router(login.router)
+app.include_router(users.router)
+app.include_router(products.router)
+app.include_router(retailers.router)
 app.include_router(scrape.router)
 app.include_router(recommend.router)
 

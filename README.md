@@ -34,9 +34,24 @@ Grafana credentials: `admin` / `chicmatrix`
 | Method | Endpoint                  | Description                    |
 |--------|---------------------------|--------------------------------|
 | GET    | `/health`                 | Service health check           |
-| POST   | `/scrape/{retailer_id}`   | Enqueue scraping task          |
-| GET    | `/recommend/{user_id}`    | Personalized recommendations   |
+| GET    | `/products`               | Catalog from scraped products  |
+| GET    | `/retailers`              | Active retailers               |
+| POST   | `/scrape/{retailer_id}`   | Enqueue scrape (**admin only**) |
+| GET    | `/recommend/me`           | Recommendations for JWT user   |
+| GET    | `/recommend/{user_id}`    | Recommendations by user UUID   |
+| PATCH  | `/users/me/profile`       | Update fashion profile         |
+| GET    | `/users/me`               | Current user fashion profile   |
 | GET    | `/metrics`                | Prometheus metrics             |
+
+### Admin scrape (seed credentials)
+
+| Email | Password | Role |
+|-------|----------|------|
+| `admin@chicmatrix.app` | `AdminPass123` | admin |
+
+Use http://localhost:3002/admin after login to enqueue worker scrapes.
+
+Fashion profile UI: http://localhost:3002/profile (requires login).
 
 ## Example usage
 

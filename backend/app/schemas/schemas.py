@@ -31,6 +31,27 @@ class ProductResponse(BaseModel):
     retailer_id: int
 
 
+class LatestPrice(BaseModel):
+    amount: float
+    currency: str
+    scraped_at: datetime
+
+
+class ProductListItem(ProductResponse):
+    retailer_name: str | None = None
+    latest_price: LatestPrice | None = None
+
+
+class ProductListResponse(BaseModel):
+    items: list[ProductListItem]
+    total: int
+
+
+class RetailerListResponse(BaseModel):
+    items: list[RetailerResponse]
+    total: int
+
+
 class PriceComparison(BaseModel):
     retailer_id: int
     retailer_name: str

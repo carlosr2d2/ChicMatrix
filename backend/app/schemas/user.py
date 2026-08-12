@@ -21,6 +21,15 @@ class UserProfileBase(BaseModel):
     habits: dict | None = None
 
 
+class UserProfileUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=120)
+    height_cm: float | None = Field(default=None, ge=100, le=250)
+    weight_kg: float | None = Field(default=None, ge=30, le=300)
+    body_proportions: dict | None = None
+    preferences: dict | None = None
+    habits: dict | None = None
+
+
 class UserResponse(UserAuthBase, UserProfileBase):
     model_config = ConfigDict(from_attributes=True)
 

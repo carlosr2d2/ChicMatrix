@@ -2,15 +2,60 @@ from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
-from app.models.models import Retailer
+from app.models.enums import UserRole
+from app.models.models import Retailer, User
+from app.services.password import hash_password
+
+
+def _admin_headers(client: TestClient, db_session) -> dict:
+    email = "admin.scrape@chicmatrix.app"
+    user = db_session.query(User).filter(User.email == email).first()
+    if not user:
+        user = User(
+            email=email,
+            password_hash=hash_password("SecurePass123"),
+            verified=True,
+            role=UserRole.ADMIN.value,
+        )
+        db_session.add(user)
+        db_session.commit()
+
+    login = client.post(
+        "/login",
+        json={"method": "email", "email": email, "password": "SecurePass123"},
+    )
+    assert login.status_code == 200
+    return {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+
+def _user_headers(client: TestClient, db_session) -> dict:
+    email = "user.scrape@chicmatrix.app"
+    user = db_session.query(User).filter(User.email == email).first()
+    if not user:
+        user = User(
+            email=email,
+            password_hash=hash_password("SecurePass123"),
+            verified=True,
+            role=UserRole.USER.value,
+        )
+        db_session.add(user)
+        db_session.commit()
+
+    login = client.post(
+        "/login",
+        json={"method": "email", "email": email, "password": "SecurePass123"},
+    )
+    assert login.status_code == 200
+    return {"Authorization": f"Bearer {login.json()['access_token']}"}
 
 
 def test_enqueue_scrape_success(client: TestClient, db_session, sample_retailer):
+    headers = _admin_headers(client, db_session)
     mock_result = MagicMock()
     mock_result.id = "task-123"
 
     with patch("app.api.scrape.celery_app.send_task", return_value=mock_result) as send_task:
-        response = client.post(f"/scrape/{sample_retailer.id}")
+        response = client.post(f"/scrape/{sample_retailer.id}", headers=headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -19,12 +64,25 @@ def test_enqueue_scrape_success(client: TestClient, db_session, sample_retailer)
     send_task.assert_called_once()
 
 
-def test_enqueue_scrape_not_found(client: TestClient):
-    response = client.post("/scrape/404")
+def test_enqueue_scrape_requires_auth(client: TestClient, sample_retailer):
+    response = client.post(f"/scrape/{sample_retailer.id}")
+    assert response.status_code == 401
+
+
+def test_enqueue_scrape_rejects_non_admin(client: TestClient, db_session, sample_retailer):
+    headers = _user_headers(client, db_session)
+    response = client.post(f"/scrape/{sample_retailer.id}", headers=headers)
+    assert response.status_code == 403
+
+
+def test_enqueue_scrape_not_found(client: TestClient, db_session):
+    headers = _admin_headers(client, db_session)
+    response = client.post("/scrape/404", headers=headers)
     assert response.status_code == 404
 
 
 def test_enqueue_scrape_inactive_retailer(client: TestClient, db_session):
+    headers = _admin_headers(client, db_session)
     retailer = Retailer(
         name="Inactive Shop",
         base_url="https://inactive.demo",
@@ -34,7 +92,7 @@ def test_enqueue_scrape_inactive_retailer(client: TestClient, db_session):
     db_session.add(retailer)
     db_session.commit()
 
-    response = client.post(f"/scrape/{retailer.id}")
+    response = client.post(f"/scrape/{retailer.id}", headers=headers)
     assert response.status_code == 400
 
 

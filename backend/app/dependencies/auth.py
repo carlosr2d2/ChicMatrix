@@ -3,7 +3,9 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.enums import UserRole
 from app.models.models import User
+from app.permissions import permissions_for_role
 from app.services.jwt_tokens import JwtTokenService, TokenError
 
 security = HTTPBearer(auto_error=False)
@@ -29,3 +31,25 @@ def get_current_user(
             detail=str(exc),
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
+
+
+def require_permission(permission: str):
+    def _dependency(user: User = Depends(get_current_user)) -> User:
+        allowed = permissions_for_role(user.role)
+        if permission not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission required: {permission}",
+            )
+        return user
+
+    return _dependency
+
+
+def require_admin(user: User = Depends(get_current_user)) -> User:
+    if user.role != UserRole.ADMIN.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin role required",
+        )
+    return user

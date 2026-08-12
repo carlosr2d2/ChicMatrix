@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 
-import { Header, FeaturedGrid, StatusBanner } from "@/components/HomeSections";
+import { Header, StatusBanner } from "@/components/HomeSections";
 
 describe("Header", () => {
   it("renders brand and navigation links", () => {
@@ -9,17 +9,6 @@ describe("Header", () => {
     expect(screen.getByText("ChicMatrix")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Collection" })).toHaveAttribute("href", "#collection");
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
-  });
-});
-
-describe("FeaturedGrid", () => {
-  it("renders featured products", () => {
-    render(<FeaturedGrid />);
-
-    expect(screen.getByText("Featured pieces")).toBeInTheDocument();
-    expect(screen.getByText("Structured Wool Blazer")).toBeInTheDocument();
-    expect(screen.getAllByText("Maison Noir").length).toBeGreaterThan(0);
-    expect(screen.getByText("$289")).toBeInTheDocument();
   });
 });
 

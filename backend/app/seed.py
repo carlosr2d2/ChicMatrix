@@ -4,7 +4,9 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
+from app.models.enums import UserRole
 from app.models.models import Retailer, User
+from app.services.password import hash_password
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +133,7 @@ DEMO_RETAILERS = [
 DEMO_USER = {
     "email": "demo@chicmatrix.app",
     "name": "Alex Rivera",
+    "password_hash": hash_password("DemoPass123"),
     "verified": True,
     "consent_given_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
     "consent_version": "1.0",
@@ -139,6 +142,16 @@ DEMO_USER = {
     "body_proportions": {"waist_cm": 76, "hips_cm": 98, "shoulders_cm": 42},
     "preferences": {"colors": ["black", "beige", "grey"], "brands": ["Maison Noir", "Urban Loom"]},
     "habits": {"occasions": ["office", "evening", "casual"], "lifestyle": "urban professional"},
+}
+
+ADMIN_USER = {
+    "email": "admin@chicmatrix.app",
+    "name": "System Admin",
+    "password_hash": hash_password("AdminPass123"),
+    "verified": True,
+    "role": UserRole.ADMIN.value,
+    "consent_given_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
+    "consent_version": "1.0",
 }
 
 
@@ -151,6 +164,18 @@ def seed_database(db: Session) -> None:
     user = db.query(User).filter(User.email == DEMO_USER["email"]).first()
     if not user:
         db.add(User(**DEMO_USER))
+    elif not user.password_hash:
+        user.password_hash = DEMO_USER["password_hash"]
+        user.verified = True
+
+    admin = db.query(User).filter(User.email == ADMIN_USER["email"]).first()
+    if not admin:
+        db.add(User(**ADMIN_USER))
+    elif admin.role != UserRole.ADMIN.value:
+        admin.role = UserRole.ADMIN.value
+        if not admin.password_hash:
+            admin.password_hash = ADMIN_USER["password_hash"]
+        admin.verified = True
 
     db.commit()
     logger.info("Seed data applied")

@@ -1,7 +1,4 @@
-import Image from "next/image";
 import Link from "next/link";
-
-import { featuredProducts } from "@/lib/data";
 
 export function Header() {
   return (
@@ -20,40 +17,6 @@ export function Header() {
         </Link>
       </div>
     </header>
-  );
-}
-
-export function FeaturedGrid() {
-  return (
-    <section id="collection" className="bg-white py-24">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-end justify-between mb-14">
-          <div>
-            <p className="text-sm tracking-[0.3em] uppercase text-stone-500 mb-3">Curated</p>
-            <h2 className="section-title">Featured pieces</h2>
-          </div>
-          <span className="text-sm text-stone-500 hidden md:block">Updated via live scraping</span>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-          {featuredProducts.map((product) => (
-            <article key={product.id} className="group cursor-pointer">
-              <div className="relative aspect-[3/4] overflow-hidden bg-sand mb-4">
-                <Image
-                  src={product.image}
-                  alt={product.name}
-                  fill
-                  className="object-cover transition-transform duration-700 group-hover:scale-105"
-                  sizes="(max-width: 768px) 50vw, 25vw"
-                />
-              </div>
-              <p className="text-xs tracking-widest uppercase text-stone-500 mb-1">{product.brand}</p>
-              <h3 className="text-sm font-medium mb-1">{product.name}</h3>
-              <p className="text-sm text-stone-600">{product.price}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }
 
