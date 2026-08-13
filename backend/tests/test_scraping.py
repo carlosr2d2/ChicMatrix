@@ -56,6 +56,7 @@ def test_scrape_fixture_listing_creates_products_and_prices(db_session):
                 "brand": ".brand",
                 "category": ".category",
                 "color": ".color",
+                "description": ".description",
             },
         },
         is_active=True,
@@ -67,8 +68,9 @@ def test_scrape_fixture_listing_creates_products_and_prices(db_session):
     service = ScrapingService(db_session)
     result = service.scrape_retailer(retailer.id)
 
-    assert result["products_created"] == 4
-    assert result["total"] == 4
+    assert result["products_created"] == 5
+    assert result["total"] == 5
+    assert result["products_classified"] == 5
 
     products = (
         db_session.query(Product).filter(Product.retailer_id == retailer.id).order_by(Product.id).all()
@@ -78,13 +80,24 @@ def test_scrape_fixture_listing_creates_products_and_prices(db_session):
     assert {p.name for p in products} >= {
         "Structured Wool Blazer",
         "Cashmere Crewneck",
+        "Leather Biker Jacket",
     }
     blazer = next(p for p in products if p.name == "Structured Wool Blazer")
     assert blazer.brand == "Maison Noir"
     assert blazer.color == "black"
+    assert blazer.description and "formal" in blazer.description.lower()
+    assert blazer.product_url and blazer.product_url.endswith("/product/mn-blazer-01")
     assert blazer.image_url and blazer.image_url.startswith("https://")
-    assert len(prices) == 4
+    assert len(prices) == 5
     assert any(price.amount == 289.0 for price in prices)
+
+    from app.models.models import ProductStyleTag
+
+    assignments = (
+        db_session.query(ProductStyleTag).filter(ProductStyleTag.product_id == blazer.id).all()
+    )
+    assert len(assignments) >= 1
+    assert any(a.score >= 0.45 for a in assignments)
 
 
 def test_scrape_file_listing_url(db_session, tmp_path):

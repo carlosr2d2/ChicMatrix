@@ -17,6 +17,7 @@ const sampleProducts = {
       retailer_id: 1,
       retailer_name: "Maison Noir",
       latest_price: { amount: 289, currency: "USD", scraped_at: "2026-01-01T00:00:00Z" },
+      style_tags: [{ code: "formal", label_es: "Formales", score: 0.9, model_version: "rules-v1" }],
     },
   ],
   total: 1,
@@ -45,6 +46,7 @@ describe("CatalogGrid", () => {
     expect(await screen.findByText("Structured Wool Blazer")).toBeInTheDocument();
     expect(screen.getByText("$289")).toBeInTheDocument();
     expect(screen.getByText(/1 items/i)).toBeInTheDocument();
+    expect(screen.getByText("Formales")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Update prices/i })).not.toBeInTheDocument();
   });
 

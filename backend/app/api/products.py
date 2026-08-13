@@ -1,9 +1,14 @@
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
-from app.models.models import Price, Product, Retailer
-from app.schemas.schemas import LatestPrice, ProductListItem, ProductListResponse
+from app.models.models import Price, Product, ProductStyleTag, Retailer, StyleTag
+from app.schemas.schemas import (
+    LatestPrice,
+    ProductListItem,
+    ProductListResponse,
+    ProductStyleTagOut,
+)
 
 router = APIRouter(prefix="/products", tags=["catalog"])
 
@@ -14,6 +19,7 @@ def list_products(
     offset: int = Query(default=0, ge=0),
     retailer_id: int | None = None,
     category: str | None = None,
+    style: str | None = None,
     db: Session = Depends(get_db),
 ):
     query = db.query(Product)
@@ -21,12 +27,20 @@ def list_products(
         query = query.filter(Product.retailer_id == retailer_id)
     if category:
         query = query.filter(Product.category.ilike(category))
+    if style:
+        query = (
+            query.join(ProductStyleTag, ProductStyleTag.product_id == Product.id)
+            .join(StyleTag, StyleTag.id == ProductStyleTag.tag_id)
+            .filter(StyleTag.code == style.lower())
+        )
 
-    total = query.count()
+    total = query.distinct().count() if style else query.count()
     products = (
-        query.order_by(Product.updated_at.desc(), Product.id.desc())
+        query.options(joinedload(Product.style_assignments).joinedload(ProductStyleTag.tag))
+        .order_by(Product.updated_at.desc(), Product.id.desc())
         .offset(offset)
         .limit(limit)
+        .distinct()
         .all()
     )
 
@@ -44,12 +58,27 @@ def list_products(
             .order_by(Price.scraped_at.desc())
             .first()
         )
+        style_tags = [
+            ProductStyleTagOut(
+                code=assignment.tag.code,
+                label_es=assignment.tag.label_es,
+                score=assignment.score,
+                model_version=assignment.model_version,
+            )
+            for assignment in sorted(
+                product.style_assignments,
+                key=lambda a: a.score,
+                reverse=True,
+            )
+            if assignment.tag is not None
+        ]
         items.append(
             ProductListItem(
                 id=product.id,
                 name=product.name,
                 description=product.description,
                 image_url=product.image_url,
+                product_url=product.product_url,
                 category=product.category,
                 brand=product.brand,
                 color=product.color,
@@ -64,6 +93,7 @@ def list_products(
                     if latest
                     else None
                 ),
+                style_tags=style_tags,
             )
         )
 

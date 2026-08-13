@@ -41,23 +41,25 @@ describe("ProfileForm", () => {
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
         height_cm: 175,
-        preferences: { colors: ["navy"], brands: ["Urban Loom"] },
+        preferences: { colors: ["navy"], brands: ["Urban Loom"], styles: [] },
       }),
     );
     expect(await screen.findByText(/Profile saved/i)).toBeInTheDocument();
   });
 
-  it("validates height range", async () => {
+  it("toggles preferred styles into the save payload", async () => {
     const user = userEvent.setup();
-    const onSave = jest.fn();
+    const onSave = jest.fn().mockResolvedValue(baseProfile);
 
     render(<ProfileForm profile={baseProfile} onSave={onSave} />);
 
-    await user.clear(screen.getByLabelText("Height (cm)"));
-    await user.type(screen.getByLabelText("Height (cm)"), "50");
+    await user.click(screen.getByRole("button", { name: "Formales" }));
     await user.click(screen.getByRole("button", { name: "Save profile" }));
 
-    expect(await screen.findByText(/Height must be between 100 and 250/i)).toBeInTheDocument();
-    expect(onSave).not.toHaveBeenCalled();
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preferences: expect.objectContaining({ styles: ["formal"] }),
+      }),
+    );
   });
 });

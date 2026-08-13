@@ -12,12 +12,19 @@ export type ProductListItem = {
   name: string;
   description: string | null;
   image_url: string | null;
+  product_url?: string | null;
   category: string | null;
   brand: string | null;
   color: string | null;
   retailer_id: number;
   retailer_name: string | null;
   latest_price: LatestPrice | null;
+  style_tags?: Array<{
+    code: string;
+    label_es: string;
+    score: number;
+    model_version: string;
+  }>;
 };
 
 export type ProductListResponse = {

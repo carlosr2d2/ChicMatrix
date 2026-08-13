@@ -10,6 +10,7 @@ import {
   csvToList,
   listToCsv,
 } from "@/lib/profile";
+import { STYLE_OPTIONS } from "@/lib/styles";
 
 type ProfileFormProps = {
   profile: FashionProfile;
@@ -26,6 +27,7 @@ export function ProfileForm({ profile, onSave }: ProfileFormProps) {
   );
   const [colors, setColors] = useState(listToCsv(profile.preferences?.colors));
   const [brands, setBrands] = useState(listToCsv(profile.preferences?.brands));
+  const [styles, setStyles] = useState<string[]>(profile.preferences?.styles ?? []);
   const [occasions, setOccasions] = useState(listToCsv(profile.habits?.occasions));
   const [lifestyle, setLifestyle] = useState(
     typeof profile.habits?.lifestyle === "string" ? profile.habits.lifestyle : "",
@@ -41,9 +43,16 @@ export function ProfileForm({ profile, onSave }: ProfileFormProps) {
     setWeightKg(profile.weight_kg != null ? String(profile.weight_kg) : "");
     setColors(listToCsv(profile.preferences?.colors));
     setBrands(listToCsv(profile.preferences?.brands));
+    setStyles(profile.preferences?.styles ?? []);
     setOccasions(listToCsv(profile.habits?.occasions));
     setLifestyle(typeof profile.habits?.lifestyle === "string" ? profile.habits.lifestyle : "");
   }, [profile]);
+
+  const toggleStyle = (code: string) => {
+    setStyles((current) =>
+      current.includes(code) ? current.filter((item) => item !== code) : [...current, code],
+    );
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -68,6 +77,7 @@ export function ProfileForm({ profile, onSave }: ProfileFormProps) {
       preferences: {
         colors: csvToList(colors),
         brands: csvToList(brands),
+        styles,
       },
       habits: {
         occasions: csvToList(occasions),
@@ -151,6 +161,35 @@ export function ProfileForm({ profile, onSave }: ProfileFormProps) {
 
       <section className="bg-white border border-sand/80 p-6 space-y-5">
         <h2 className="text-sm tracking-[0.2em] uppercase text-stone-500">Preferences</h2>
+        <div>
+          <p className="block text-sm text-stone-600 mb-3" id="profile-styles-label">
+            Preferred styles
+          </p>
+          <div
+            className="flex flex-wrap gap-2"
+            role="group"
+            aria-labelledby="profile-styles-label"
+          >
+            {STYLE_OPTIONS.map((option) => {
+              const selected = styles.includes(option.code);
+              return (
+                <button
+                  key={option.code}
+                  type="button"
+                  onClick={() => toggleStyle(option.code)}
+                  aria-pressed={selected}
+                  className={
+                    selected
+                      ? "text-xs tracking-[0.15em] uppercase px-3 py-2 bg-ink text-cream border border-ink"
+                      : "text-xs tracking-[0.15em] uppercase px-3 py-2 bg-cream text-stone-600 border border-sand"
+                  }
+                >
+                  {option.labelEs}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div>
           <label htmlFor="profile-colors" className="block text-sm text-stone-600 mb-2">
             Preferred colors

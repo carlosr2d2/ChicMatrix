@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models.enums import UserRole
-from app.models.models import Retailer, User
+from app.models.models import Retailer, StyleTag, User
 from app.services.password import hash_password
+from app.services.style_tagging import ensure_style_tags
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ COMMON_SELECTORS = {
     "brand": ".brand",
     "category": ".category",
     "color": ".color",
+    "description": ".description",
 }
 
 DEMO_RETAILERS = [
@@ -77,7 +79,11 @@ DEMO_USER = {
     "height_cm": 172.0,
     "weight_kg": 68.0,
     "body_proportions": {"waist_cm": 76, "hips_cm": 98, "shoulders_cm": 42},
-    "preferences": {"colors": ["black", "beige", "grey"], "brands": ["Maison Noir", "Urban Loom"]},
+    "preferences": {
+        "colors": ["black", "beige", "grey"],
+        "brands": ["Maison Noir", "Urban Loom"],
+        "styles": ["formal", "minimal", "casual"],
+    },
     "habits": {"occasions": ["office", "evening", "casual"], "lifestyle": "urban professional"},
 }
 
@@ -93,6 +99,8 @@ ADMIN_USER = {
 
 
 def seed_database(db: Session) -> None:
+    ensure_style_tags(db)
+
     for data in DEMO_RETAILERS:
         exists = db.query(Retailer).filter(Retailer.name == data["name"]).first()
         if not exists:
@@ -106,9 +114,14 @@ def seed_database(db: Session) -> None:
     user = db.query(User).filter(User.email == DEMO_USER["email"]).first()
     if not user:
         db.add(User(**DEMO_USER))
-    elif not user.password_hash:
-        user.password_hash = DEMO_USER["password_hash"]
-        user.verified = True
+    else:
+        if not user.password_hash:
+            user.password_hash = DEMO_USER["password_hash"]
+            user.verified = True
+        # Keep demo style preferences aligned with taxonomy v1.
+        prefs = dict(user.preferences or {})
+        prefs.setdefault("styles", DEMO_USER["preferences"]["styles"])
+        user.preferences = prefs
 
     admin = db.query(User).filter(User.email == ADMIN_USER["email"]).first()
     if not admin:
@@ -120,7 +133,10 @@ def seed_database(db: Session) -> None:
         admin.verified = True
 
     db.commit()
-    logger.info("Seed data applied")
+    logger.info(
+        "Seed data applied",
+        extra={"style_tags": db.query(StyleTag).count()},
+    )
 
 
 def run_seed():

@@ -142,6 +142,7 @@ class Product(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    product_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     category: Mapped[str | None] = mapped_column(String(120), nullable=True)
     brand: Mapped[str | None] = mapped_column(String(120), nullable=True)
     color: Mapped[str | None] = mapped_column(String(80), nullable=True)
@@ -156,6 +157,42 @@ class Product(Base):
 
     retailer: Mapped["Retailer"] = relationship(back_populates="products")
     prices: Mapped[list["Price"]] = relationship(back_populates="product")
+    style_assignments: Mapped[list["ProductStyleTag"]] = relationship(
+        back_populates="product", cascade="all, delete-orphan"
+    )
+
+
+class StyleTag(Base):
+    __tablename__ = "style_tags"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    code: Mapped[str] = mapped_column(String(40), unique=True, nullable=False, index=True)
+    label_es: Mapped[str] = mapped_column(String(80), nullable=False)
+    active: Mapped[bool] = mapped_column(default=True, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    assignments: Mapped[list["ProductStyleTag"]] = relationship(back_populates="tag")
+
+
+class ProductStyleTag(Base):
+    __tablename__ = "product_style_tags"
+
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), primary_key=True
+    )
+    tag_id: Mapped[int] = mapped_column(
+        ForeignKey("style_tags.id", ondelete="CASCADE"), primary_key=True, index=True
+    )
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    model_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    classified_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    product: Mapped["Product"] = relationship(back_populates="style_assignments")
+    tag: Mapped["StyleTag"] = relationship(back_populates="assignments")
 
 
 class Price(Base):

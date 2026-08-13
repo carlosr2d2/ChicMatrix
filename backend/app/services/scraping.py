@@ -3,7 +3,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models.models import Price, Product, Retailer
 from app.services.browser_fetcher import PlaywrightFetcher
+from app.services.style_tagging import apply_style_classification
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,7 @@ class ScrapingService:
 
     created = 0
     updated = 0
+    classified = 0
 
     for idx, item in enumerate(items):
       product_data = self._parse_item(item, selectors, retailer, idx)
@@ -91,11 +93,15 @@ class ScrapingService:
           )
         )
 
+      apply_style_classification(self.db, product)
+      classified += 1
+
     self.db.commit()
     result = {
       "retailer_id": retailer_id,
       "products_created": created,
       "products_updated": updated,
+      "products_classified": classified,
       "total": created + updated,
     }
     logger.info("Scrape completed", extra=result)
@@ -126,14 +132,12 @@ class ScrapingService:
     if fixture_name:
       path = scraping_fixtures_dir() / fixture_name
     elif parsed.scheme == "fixture":
-      # fixture://maison_noir.html or fixture:maison_noir.html
       name = unquote(parsed.netloc or parsed.path).lstrip("/")
       if not name:
         raise ValueError(f"Invalid fixture listing_url: {url}")
       path = scraping_fixtures_dir() / name
     elif parsed.scheme == "file":
       raw_path = unquote(parsed.path)
-      # file:///C:/foo.html → /C:/foo.html on Windows
       if os.name == "nt" and re.match(r"^/[A-Za-z]:", raw_path):
         raw_path = raw_path[1:]
       path = Path(raw_path)
@@ -154,6 +158,7 @@ class ScrapingService:
     brand_sel = selectors.get("brand", ".brand")
     category_sel = selectors.get("category", ".category")
     color_sel = selectors.get("color", ".color, [data-color]")
+    description_sel = selectors.get("description", ".description, .product-description, p.desc")
 
     name_el = item.select_one(name_sel)
     name = name_el.get_text(strip=True) if name_el else None
@@ -174,26 +179,35 @@ class ScrapingService:
 
     link_el = item.select_one(link_sel)
     external_id = None
+    product_url = None
     if link_el and link_el.get("href"):
       href = link_el["href"]
-      external_id = href.rstrip("/").split("/")[-1]
-    else:
-      external_id = f"{retailer.name.lower()}-{idx}"
+      product_url = urljoin(retailer.base_url.rstrip("/") + "/", href)
+      external_id = href.rstrip("/").split("/")[-1] or None
+    if not external_id:
+      external_id = f"{retailer.name.lower().replace(' ', '-')}-{idx}"
 
     brand_el = item.select_one(brand_sel)
     category_el = item.select_one(category_sel)
     color_el = item.select_one(color_sel)
+    description_el = item.select_one(description_sel)
+
     color = None
     if color_el:
       color = color_el.get("data-color") or color_el.get_text(strip=True)
     if not color:
       color = selectors.get("default_color")
 
+    description = None
+    if description_el:
+      description = description_el.get_text(" ", strip=True) or None
+
     return {
       "external_id": external_id,
       "name": name,
-      "description": None,
+      "description": description,
       "image_url": image_url,
+      "product_url": product_url,
       "brand": brand_el.get_text(strip=True) if brand_el else None,
       "category": category_el.get_text(strip=True) if category_el else selectors.get("default_category"),
       "color": color,
@@ -205,6 +219,7 @@ class ScrapingService:
     html_parts = []
     for item in demo_items:
       color = item.get("color", "")
+      description = item.get("description", "")
       html_parts.append(
         f'<article class="product">'
         f'<h3 class="product-title">{item["name"]}</h3>'
@@ -214,6 +229,7 @@ class ScrapingService:
         f'<span class="brand">{item.get("brand", "")}</span>'
         f'<span class="category">{item.get("category", "")}</span>'
         f'<span class="color">{color}</span>'
+        f'<p class="description">{description}</p>'
         f"</article>"
       )
     soup = BeautifulSoup("".join(html_parts), "lxml")

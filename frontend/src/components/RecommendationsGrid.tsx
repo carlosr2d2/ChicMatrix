@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 
 import { Alert } from "@/components/auth/Alert";
-import { PLACEHOLDER_IMAGE } from "@/lib/catalog";
+import { ProductImage } from "@/components/ProductImage";
+import { StyleChips } from "@/components/StyleChips";
 import {
   formatRecommendationPrice,
   fetchMyRecommendations,
@@ -20,13 +20,7 @@ function RecommendationCard({ item }: { item: RecommendationItem }) {
   return (
     <article className="group">
       <div className="relative aspect-[3/4] overflow-hidden bg-sand mb-4">
-        <Image
-          src={product.image_url ?? PLACEHOLDER_IMAGE}
-          alt={product.name}
-          fill
-          className="object-cover transition-transform duration-700 group-hover:scale-105"
-          sizes="(max-width: 768px) 50vw, 25vw"
-        />
+        <ProductImage src={product.image_url} alt={product.name} />
       </div>
       <div className="flex items-baseline justify-between gap-2 mb-1">
         <p className="text-xs tracking-widest uppercase text-stone-500">
@@ -36,6 +30,14 @@ function RecommendationCard({ item }: { item: RecommendationItem }) {
       </div>
       <h3 className="text-sm font-medium mb-1">{product.name}</h3>
       <p className="text-sm text-stone-600 mb-2">{formatRecommendationPrice(best_price)}</p>
+      <StyleChips
+        className="mb-2"
+        tags={(product.style_tags ?? []).map((tag) => ({
+          code: tag.code,
+          label: tag.label_es,
+          score: tag.score,
+        }))}
+      />
       {best_price ? (
         <p className="text-xs text-stone-500 mb-2">Best at {best_price.retailer_name}</p>
       ) : null}

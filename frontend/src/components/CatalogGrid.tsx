@@ -1,11 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import Image from "next/image";
 
 import { Alert } from "@/components/auth/Alert";
+import { ProductImage } from "@/components/ProductImage";
+import { StyleChips } from "@/components/StyleChips";
 import {
-  PLACEHOLDER_IMAGE,
   catalogKeys,
   fetchProducts,
   formatPrice,
@@ -17,29 +17,31 @@ function ProductCard({
   imageUrl,
   priceLabel,
   retailerName,
+  styleTags,
 }: {
   name: string;
   brand: string | null;
-  imageUrl: string;
+  imageUrl: string | null;
   priceLabel: string;
   retailerName: string | null;
+  styleTags: Array<{ code: string; label_es: string; score: number }>;
 }) {
   return (
     <article className="group">
       <div className="relative aspect-[3/4] overflow-hidden bg-sand mb-4">
-        <Image
-          src={imageUrl}
-          alt={name}
-          fill
-          className="object-cover transition-transform duration-700 group-hover:scale-105"
-          sizes="(max-width: 768px) 50vw, 25vw"
-        />
+        <ProductImage src={imageUrl} alt={name} />
       </div>
       <p className="text-xs tracking-widest uppercase text-stone-500 mb-1">
         {brand ?? retailerName ?? "ChicMatrix"}
       </p>
       <h3 className="text-sm font-medium mb-1">{name}</h3>
-      <p className="text-sm text-stone-600">{priceLabel}</p>
+      <p className="text-sm text-stone-600 mb-2">{priceLabel}</p>
+      <StyleChips
+        tags={styleTags.map((tag) => ({
+          code: tag.code,
+          label: tag.label_es,
+        }))}
+      />
     </article>
   );
 }
@@ -112,9 +114,10 @@ export function CatalogGrid() {
                 key={product.id}
                 name={product.name}
                 brand={product.brand}
-                imageUrl={product.image_url ?? PLACEHOLDER_IMAGE}
+                imageUrl={product.image_url}
                 priceLabel={formatPrice(product.latest_price)}
                 retailerName={product.retailer_name}
+                styleTags={product.style_tags ?? []}
               />
             ))}
           </div>

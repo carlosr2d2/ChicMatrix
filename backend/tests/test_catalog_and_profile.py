@@ -40,6 +40,8 @@ def test_list_products(client: TestClient, sample_product_with_price, sample_ret
     assert item["retailer_name"] == sample_retailer.name
     assert item["latest_price"]["amount"] == 89.0
     assert item["image_url"] is None or isinstance(item["image_url"], str)
+    assert "style_tags" in item
+    assert "product_url" in item
 
 
 def test_list_products_filter_by_retailer(client: TestClient, sample_product_with_price, sample_retailer):

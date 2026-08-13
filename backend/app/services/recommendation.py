@@ -2,12 +2,13 @@ from collections import defaultdict
 from datetime import datetime
 
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
-from app.models.models import Price, Product, Retailer, User
+from app.models.models import Price, Product, ProductStyleTag, Retailer, User
 from app.schemas.schemas import (
   PriceComparison,
   ProductResponse,
+  ProductStyleTagOut,
   RecommendationItem,
 )
 
@@ -19,7 +20,11 @@ class RecommendationEngine:
     self.db = db
 
   def recommend(self, user: User, limit: int = 12) -> list[RecommendationItem]:
-    products = self.db.query(Product).all()
+    products = (
+      self.db.query(Product)
+      .options(joinedload(Product.style_assignments).joinedload(ProductStyleTag.tag))
+      .all()
+    )
     if not products:
       return []
 
@@ -27,6 +32,7 @@ class RecommendationEngine:
     habits = user.habits or {}
     preferred_colors = {c.lower() for c in preferences.get("colors", [])}
     preferred_brands = {b.lower() for b in preferences.get("brands", [])}
+    preferred_styles = {s.lower() for s in preferences.get("styles", [])}
     preferred_categories = {c.lower() for c in habits.get("occasions", [])}
 
     collaborative_scores = self._collaborative_scores(user)
@@ -48,6 +54,10 @@ class RecommendationEngine:
         score += 1.5
         reasons.append(f"Suitable for occasion: {product.category}")
 
+      style_score, style_reasons = self._style_match_score(product, preferred_styles)
+      score += style_score
+      reasons.extend(style_reasons)
+
       size_score, size_reason = self._size_fit_score(user, product)
       score += size_score
       if size_reason:
@@ -66,13 +76,50 @@ class RecommendationEngine:
 
     return [self._build_item(product, score, reasons) for product, score, reasons in top]
 
+  def _style_match_score(
+    self, product: Product, preferred_styles: set[str]
+  ) -> tuple[float, list[str]]:
+    if not preferred_styles:
+      return 0.0, []
+
+    score = 0.0
+    reasons: list[str] = []
+    for assignment in product.style_assignments:
+      tag = assignment.tag
+      if not tag or not tag.active:
+        continue
+      if tag.code.lower() not in preferred_styles:
+        continue
+      score += 2.0 * float(assignment.score)
+      reasons.append(f"Matches style: {tag.label_es}")
+    return score, reasons
+
   def _build_item(
     self, product: Product, score: float, reasons: list[str]
   ) -> RecommendationItem:
     prices = self._price_comparisons(product)
     best = min(prices, key=lambda p: p.amount) if prices else None
+    product_payload = ProductResponse.model_validate(product)
+    product_payload = product_payload.model_copy(
+      update={
+        "style_tags": [
+          ProductStyleTagOut(
+            code=assignment.tag.code,
+            label_es=assignment.tag.label_es,
+            score=assignment.score,
+            model_version=assignment.model_version,
+          )
+          for assignment in sorted(
+            product.style_assignments,
+            key=lambda a: a.score,
+            reverse=True,
+          )
+          if assignment.tag is not None
+        ]
+      }
+    )
     return RecommendationItem(
-      product=ProductResponse.model_validate(product),
+      product=product_payload,
       score=round(score, 2),
       reasons=reasons,
       prices=prices,

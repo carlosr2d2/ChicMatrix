@@ -18,6 +18,13 @@ class RetailerResponse(BaseModel):
     is_active: bool
 
 
+class ProductStyleTagOut(BaseModel):
+    code: str
+    label_es: str
+    score: float
+    model_version: str
+
+
 class ProductResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -25,10 +32,12 @@ class ProductResponse(BaseModel):
     name: str
     description: str | None
     image_url: str | None
+    product_url: str | None = None
     category: str | None
     brand: str | None
     color: str | None
     retailer_id: int
+    style_tags: list[ProductStyleTagOut] = Field(default_factory=list)
 
 
 class LatestPrice(BaseModel):

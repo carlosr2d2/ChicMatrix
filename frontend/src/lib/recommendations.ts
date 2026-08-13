@@ -5,10 +5,17 @@ export type RecommendationProduct = {
   name: string;
   description: string | null;
   image_url: string | null;
+  product_url?: string | null;
   category: string | null;
   brand: string | null;
   color: string | null;
   retailer_id: number;
+  style_tags?: Array<{
+    code: string;
+    label_es: string;
+    score: number;
+    model_version: string;
+  }>;
 };
 
 export type PriceComparison = {

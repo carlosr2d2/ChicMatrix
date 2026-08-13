@@ -14,6 +14,7 @@ export type FashionProfile = {
   preferences: {
     colors?: string[];
     brands?: string[];
+    styles?: string[];
     [key: string]: unknown;
   } | null;
   habits: {
@@ -30,6 +31,7 @@ export type FashionProfileUpdate = {
   preferences?: {
     colors?: string[];
     brands?: string[];
+    styles?: string[];
   };
   habits?: {
     occasions?: string[];
@@ -76,7 +78,8 @@ export function isProfileComplete(profile: FashionProfile): boolean {
   const hasBiometrics = profile.height_cm != null && profile.weight_kg != null;
   const hasPreferences =
     (profile.preferences?.colors?.length ?? 0) > 0 ||
-    (profile.preferences?.brands?.length ?? 0) > 0;
+    (profile.preferences?.brands?.length ?? 0) > 0 ||
+    (profile.preferences?.styles?.length ?? 0) > 0;
   const hasHabits = (profile.habits?.occasions?.length ?? 0) > 0;
   return hasBiometrics && hasPreferences && hasHabits;
 }

@@ -146,7 +146,11 @@ Seed retailers scrape **local HTML fixtures** (not live storefronts), so the pip
 | Urban Loom | `fixture://urban_loom.html` |
 | Atelier Vue | `fixture://atelier_vue.html` |
 
-Fixtures live in `backend/fixtures/scraping/`. The worker parses them with the same BeautifulSoup selectors used for real HTTP pages.
+Fixtures live in `backend/fixtures/scraping/`. The worker parses them with the same BeautifulSoup selectors used for real HTTP pages, including **description** and **product URL**, then runs the **F0 style classifier** (`rules-v1`) into `style_tags` / `product_style_tags`.
+
+Closed style vocabulary v1: `formal`, `sport`, `biker`, `rocker`, `casual`, `minimal`, `streetwear`.
+
+Filter catalog by style: `GET /products?style=formal`.
 
 ```json
 {
