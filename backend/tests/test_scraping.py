@@ -7,6 +7,15 @@ from app.models.models import Price, Product, Retailer
 from app.services.scraping import ScrapingService, scraping_fixtures_dir
 
 
+@pytest.fixture(autouse=True)
+def _disable_image_cache_in_scrape_tests(monkeypatch):
+    """Keep scrape unit tests offline; image cache covered in test_image_cache.py."""
+    monkeypatch.setattr(
+        "app.services.scraping.cache_product_image",
+        lambda *args, **kwargs: None,
+    )
+
+
 def test_scrape_demo_retailer_creates_products(db_session, sample_retailer):
     service = ScrapingService(db_session)
     result = service.scrape_retailer(sample_retailer.id)

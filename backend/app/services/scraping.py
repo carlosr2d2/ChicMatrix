@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.models.models import Price, Product, Retailer
 from app.services.browser_fetcher import PlaywrightFetcher
+from app.services.image_cache import cache_product_image
 from app.services.style_tagging import apply_style_classification
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,7 @@ class ScrapingService:
     updated = 0
     classified = 0
     details_enriched = 0
+    images_cached = 0
 
     for idx, item in enumerate(items):
       product_data = self._parse_item(item, selectors, retailer, idx)
@@ -88,6 +90,9 @@ class ScrapingService:
       self._apply_field_fallbacks(product_data, retailer, selectors)
 
       price_amount = product_data.pop("price", None)
+      # Preserve remote URL for disk cache; do not overwrite an already-cached local path
+      # until we know the download succeeded.
+      remote_image = product_data.get("image_url")
 
       existing = (
         self.db.query(Product)
@@ -100,8 +105,12 @@ class ScrapingService:
 
       if existing:
         for key, value in product_data.items():
-          if key != "external_id" and value is not None:
-            setattr(existing, key, value)
+          if key == "external_id" or value is None:
+            continue
+          if key == "image_url" and existing.image_url and "/media/products/" in existing.image_url:
+            # Keep local path until cache_product_image refreshes it.
+            continue
+          setattr(existing, key, value)
         product = existing
         updated += 1
       else:
@@ -124,6 +133,15 @@ class ScrapingService:
       apply_style_classification(self.db, product)
       classified += 1
 
+      if config.get("cache_images", True):
+        cached = cache_product_image(
+          product,
+          source_url=remote_image or product.image_source_url,
+          headers=headers,
+        )
+        if cached:
+          images_cached += 1
+
     self.db.commit()
     result = {
       "retailer_id": retailer_id,
@@ -131,6 +149,7 @@ class ScrapingService:
       "products_updated": updated,
       "products_classified": classified,
       "details_enriched": details_enriched,
+      "images_cached": images_cached,
       "total": created + updated,
     }
     logger.info("Scrape completed", extra=result)

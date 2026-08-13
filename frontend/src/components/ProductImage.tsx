@@ -1,12 +1,16 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type ProductImageProps = {
   src: string | null | undefined;
   alt: string;
   sizes?: string;
+  /** Eager-load above-the-fold images (PDP hero / first grid cards). */
+  priority?: boolean;
+  /** thumb = grid cards; hero = product detail. */
+  variant?: "thumb" | "hero";
 };
 
 function MissingImagePlaceholder({ alt }: { alt: string }) {
@@ -22,22 +26,59 @@ function MissingImagePlaceholder({ alt }: { alt: string }) {
   );
 }
 
-export function ProductImage({ src, alt, sizes = "(max-width: 768px) 50vw, 25vw" }: ProductImageProps) {
+function shouldBypassOptimizer(src: string): boolean {
+  // Scraped retailer hosts are often slow through /_next/image (extra hop).
+  // Load them directly; keep optimizing Unsplash demos.
+  try {
+    const host = new URL(src).hostname;
+    return host !== "images.unsplash.com" && !host.endsWith(".unsplash.com");
+  } catch {
+    return true;
+  }
+}
+
+export function ProductImage({
+  src,
+  alt,
+  sizes = "(max-width: 768px) 50vw, 25vw",
+  priority = false,
+  variant = "thumb",
+}: ProductImageProps) {
   const initial = src?.trim() ? src.trim() : null;
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+    setLoaded(false);
+  }, [initial]);
 
   if (!initial || failed) {
     return <MissingImagePlaceholder alt={alt} />;
   }
 
+  const quality = variant === "hero" ? 72 : 55;
+  const unoptimized = shouldBypassOptimizer(initial);
+
   return (
-    <Image
-      src={initial}
-      alt={alt}
-      fill
-      className="object-cover transition-transform duration-700 group-hover:scale-105"
-      sizes={sizes}
-      onError={() => setFailed(true)}
-    />
+    <>
+      {!loaded ? (
+        <div className="absolute inset-0 bg-sand animate-pulse" aria-hidden="true" />
+      ) : null}
+      <Image
+        src={initial}
+        alt={alt}
+        fill
+        priority={priority}
+        quality={quality}
+        unoptimized={unoptimized}
+        sizes={sizes}
+        className={`object-cover transition-all duration-500 group-hover:scale-105 ${
+          loaded ? "opacity-100" : "opacity-0"
+        }`}
+        onLoad={() => setLoaded(true)}
+        onError={() => setFailed(true)}
+      />
+    </>
   );
 }

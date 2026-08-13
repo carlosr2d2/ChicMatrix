@@ -17,12 +17,18 @@ import { STYLE_OPTIONS } from "@/lib/styles";
 
 const PAGE_SIZE = 24;
 
-function ProductCard({ product }: { product: ProductListItem }) {
+function ProductCard({
+  product,
+  priority = false,
+}: {
+  product: ProductListItem;
+  priority?: boolean;
+}) {
   return (
     <article className="group">
       <Link href={`/products/${product.id}`} className="block focus:outline-none focus-visible:ring-1 focus-visible:ring-ink">
         <div className="relative aspect-[3/4] overflow-hidden bg-sand mb-4">
-          <ProductImage src={product.image_url} alt={product.name} />
+          <ProductImage src={product.image_url} alt={product.name} priority={priority} />
         </div>
         <p className="text-xs tracking-widest uppercase text-stone-500 mb-1">
           {product.brand ?? product.retailer_name ?? "ChicMatrix"}
@@ -152,8 +158,8 @@ export function CatalogGrid() {
         {!isLoading && !isError && products.length > 0 ? (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 animate-fade-in">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+              {products.map((product, index) => (
+                <ProductCard key={product.id} product={product} priority={index < 4} />
               ))}
             </div>
             {canLoadMore ? (

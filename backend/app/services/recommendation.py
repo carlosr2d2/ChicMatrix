@@ -1,9 +1,11 @@
 from collections import defaultdict
 from datetime import datetime
+import re
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
+from app.models.enums import SexCode
 from app.models.models import Price, Product, ProductStyleTag, Retailer, User
 from app.schemas.schemas import (
   PriceComparison,
@@ -11,10 +13,24 @@ from app.schemas.schemas import (
   ProductStyleTagOut,
   RecommendationItem,
 )
+from app.services.image_cache import absolute_image_url
 
 
 class RecommendationEngine:
   """Hybrid recommender: rule-based filters + simple collaborative signals."""
+
+  _FEMALE_MARKERS = re.compile(
+    r"\b(women|woman|mujer|ladies|lady|womens|women's|for women)\b",
+    re.IGNORECASE,
+  )
+  _MALE_MARKERS = re.compile(
+    r"\b(men|man|hombre|gents|mens|men's|for men)\b",
+    re.IGNORECASE,
+  )
+  _FEMALE_GARMENTS = re.compile(
+    r"\b(dress|dresses|skirt|skirts|blouse|blouses|gown|gowns|leggings)\b",
+    re.IGNORECASE,
+  )
 
   def __init__(self, db: Session):
     self.db = db
@@ -34,11 +50,12 @@ class RecommendationEngine:
     preferred_brands = {b.lower() for b in preferences.get("brands", [])}
     preferred_styles = {s.lower() for s in preferences.get("styles", [])}
     preferred_categories = {c.lower() for c in habits.get("occasions", [])}
+    eligible = [p for p in products if self._is_sex_compatible(user, p)]
 
     collaborative_scores = self._collaborative_scores(user)
 
     scored: list[tuple[Product, float, list[str]]] = []
-    for product in products:
+    for product in eligible:
       score = 0.0
       reasons: list[str] = []
 
@@ -63,6 +80,11 @@ class RecommendationEngine:
       if size_reason:
         reasons.append(size_reason)
 
+      sex_score, sex_reason = self._sex_match_score(user, product)
+      score += sex_score
+      if sex_reason:
+        reasons.append(sex_reason)
+
       collab = collaborative_scores.get(product.id, 0.0)
       if collab > 0:
         score += collab
@@ -72,7 +94,10 @@ class RecommendationEngine:
         scored.append((product, score, reasons))
 
     scored.sort(key=lambda x: x[1], reverse=True)
-    top = scored[:limit] if scored else [(p, 0.5, ["Curated pick"]) for p in products[:limit]]
+    if scored:
+      top = scored[:limit]
+    else:
+      top = [(p, 0.5, ["Curated pick"]) for p in eligible[:limit]]
 
     return [self._build_item(product, score, reasons) for product, score, reasons in top]
 
@@ -102,6 +127,7 @@ class RecommendationEngine:
     product_payload = ProductResponse.model_validate(product)
     product_payload = product_payload.model_copy(
       update={
+        "image_url": absolute_image_url(product.image_url),
         "style_tags": [
           ProductStyleTagOut(
             code=assignment.tag.code,
@@ -172,6 +198,55 @@ class RecommendationEngine:
       return 0.8, f"Size {product.size} aligned with your measurements"
 
     return 0.2, None
+
+  def _product_text(self, product: Product) -> str:
+    return " ".join(
+      part
+      for part in [product.name or "", product.description or "", product.category or ""]
+      if part
+    )
+
+  def _product_audience(self, product: Product) -> str | None:
+    """Infer intended audience: female, male, or None (unisex/unknown)."""
+    text = self._product_text(product)
+    if not text:
+      return None
+
+    has_female = bool(self._FEMALE_MARKERS.search(text))
+    # Avoid matching the "men" inside "women".
+    text_without_women = self._FEMALE_MARKERS.sub(" ", text)
+    has_male = bool(self._MALE_MARKERS.search(text_without_women))
+
+    if has_female and not has_male:
+      return SexCode.FEMALE.value
+    if has_male and not has_female:
+      return SexCode.MALE.value
+    if has_female and has_male:
+      return None
+    if self._FEMALE_GARMENTS.search(text):
+      return SexCode.FEMALE.value
+    return None
+
+  def _is_sex_compatible(self, user: User, product: Product) -> bool:
+    sex = (user.sex or "").lower()
+    if sex not in {SexCode.FEMALE.value, SexCode.MALE.value}:
+      return True
+    audience = self._product_audience(product)
+    if audience is None:
+      return True
+    return audience == sex
+
+  def _sex_match_score(self, user: User, product: Product) -> tuple[float, str | None]:
+    """Boost when assortment explicitly matches profile sex."""
+    sex = (user.sex or "").lower()
+    if sex not in {SexCode.FEMALE.value, SexCode.MALE.value}:
+      return 0.0, None
+    audience = self._product_audience(product)
+    if audience == sex == SexCode.FEMALE.value:
+      return 1.5, "Aligned with women's assortment"
+    if audience == sex == SexCode.MALE.value:
+      return 1.5, "Aligned with men's assortment"
+    return 0.0, None
 
   def _collaborative_scores(self, user: User) -> dict[int, float]:
     """Simple CF: users with similar BMI/category prefs boost shared product categories."""

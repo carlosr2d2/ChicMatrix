@@ -54,7 +54,7 @@ Use this path to verify the full system after `docker compose up --build`:
 2. **Admin scrape** — login as `admin@chicmatrix.app` → [http://localhost:3002/admin](http://localhost:3002/admin) → enqueue Maison Noir / Urban Loom / Atelier Vue
 3. **Worker** — Flower [http://localhost:5556](http://localhost:5556) → tasks `SUCCESS`
 4. **Catalog** — home [http://localhost:3002](http://localhost:3002) → Featured pieces show names, images, prices (`GET /products`)
-5. **Customer profile** — login as `demo@chicmatrix.app` → [http://localhost:3002/profile](http://localhost:3002/profile) → save colors/brands/occasions
+5. **Customer profile** — login as `demo@chicmatrix.app` → [http://localhost:3002/profile](http://localhost:3002/profile) → save age/sex, colors/brands/styles/occasions
 6. **Recommendations** — [http://localhost:3002/recommendations](http://localhost:3002/recommendations) → ranked picks with match score, reasons, best price
 
 Customers never trigger scrapes. Only admins enqueue work; workers write the catalog.
@@ -161,6 +161,10 @@ A fourth seeded retailer hits a **public practice fashion catalog** over real HT
 Offline CI uses the same DOM snapshot: `fixture://automation_exercise_products.html`.
 
 Fixtures live in `backend/fixtures/scraping/`. The worker parses them with the same BeautifulSoup selectors used for real HTTP pages, including **description** and **product URL**, then runs the **style classifier** (default **hybrid** = F0 lexicon first, F1 NLP fallback) into `style_tags` / `product_style_tags`.
+
+### Product image cache
+
+Scraped images are downloaded to a shared Docker volume (`product_media` → `MEDIA_ROOT=/app/media`) and served at `GET /media/products/{id}.ext`. The DB keeps the remote original in `image_source_url` and a local `/media/...` path in `image_url` (API responses absolutize with `API_BASE_URL`). Disable per retailer with `"cache_images": false` in `scraping_config`.
 
 Closed style vocabulary v1: `formal`, `sport`, `biker`, `rocker`, `casual`, `minimal`, `streetwear`.
 

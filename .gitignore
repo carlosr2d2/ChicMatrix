@@ -25,6 +25,10 @@ Thumbs.db
 # Docker
 *.log
 
+# Local product image cache (Docker uses named volume)
+backend/media/
+media/
+
 # Test
 .coverage
 htmlcov/

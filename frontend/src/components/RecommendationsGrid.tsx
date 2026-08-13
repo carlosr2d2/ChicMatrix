@@ -13,7 +13,13 @@ import {
   type RecommendationItem,
 } from "@/lib/recommendations";
 
-function RecommendationCard({ item }: { item: RecommendationItem }) {
+function RecommendationCard({
+  item,
+  priority = false,
+}: {
+  item: RecommendationItem;
+  priority?: boolean;
+}) {
   const { product, score, reasons, best_price, prices } = item;
   const otherPrices = prices.filter((p) => p.retailer_id !== best_price?.retailer_id);
 
@@ -24,7 +30,7 @@ function RecommendationCard({ item }: { item: RecommendationItem }) {
         className="block focus:outline-none focus-visible:ring-1 focus-visible:ring-ink"
       >
         <div className="relative aspect-[3/4] overflow-hidden bg-sand mb-4">
-          <ProductImage src={product.image_url} alt={product.name} />
+          <ProductImage src={product.image_url} alt={product.name} priority={priority} />
         </div>
         <div className="flex items-baseline justify-between gap-2 mb-1">
           <p className="text-xs tracking-widest uppercase text-stone-500">
@@ -139,8 +145,8 @@ export function RecommendationsGrid() {
 
       {!isLoading && !isError && items.length > 0 ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 animate-fade-in">
-          {items.map((item) => (
-            <RecommendationCard key={item.product.id} item={item} />
+          {items.map((item, index) => (
+            <RecommendationCard key={item.product.id} item={item} priority={index < 4} />
           ))}
         </div>
       ) : null}

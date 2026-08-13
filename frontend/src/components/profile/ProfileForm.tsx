@@ -11,6 +11,7 @@ import {
   listToCsv,
 } from "@/lib/profile";
 import { STYLE_OPTIONS } from "@/lib/styles";
+import { SEX_OPTIONS } from "@/lib/sex";
 
 type ProfileFormProps = {
   profile: FashionProfile;
@@ -19,6 +20,8 @@ type ProfileFormProps = {
 
 export function ProfileForm({ profile, onSave }: ProfileFormProps) {
   const [name, setName] = useState(profile.name ?? "");
+  const [age, setAge] = useState(profile.age != null ? String(profile.age) : "");
+  const [sex, setSex] = useState(profile.sex ?? "");
   const [heightCm, setHeightCm] = useState(
     profile.height_cm != null ? String(profile.height_cm) : "",
   );
@@ -39,6 +42,8 @@ export function ProfileForm({ profile, onSave }: ProfileFormProps) {
 
   useEffect(() => {
     setName(profile.name ?? "");
+    setAge(profile.age != null ? String(profile.age) : "");
+    setSex(profile.sex ?? "");
     setHeightCm(profile.height_cm != null ? String(profile.height_cm) : "");
     setWeightKg(profile.weight_kg != null ? String(profile.weight_kg) : "");
     setColors(listToCsv(profile.preferences?.colors));
@@ -58,9 +63,14 @@ export function ProfileForm({ profile, onSave }: ProfileFormProps) {
     event.preventDefault();
     setFeedback(null);
 
+    const parsedAge = age.trim() ? Number(age) : null;
     const height = heightCm.trim() ? Number(heightCm) : null;
     const weight = weightKg.trim() ? Number(weightKg) : null;
 
+    if (parsedAge != null && (Number.isNaN(parsedAge) || parsedAge < 13 || parsedAge > 120)) {
+      setFeedback({ type: "error", message: "Age must be between 13 and 120" });
+      return;
+    }
     if (height != null && (Number.isNaN(height) || height < 100 || height > 250)) {
       setFeedback({ type: "error", message: "Height must be between 100 and 250 cm" });
       return;
@@ -72,6 +82,8 @@ export function ProfileForm({ profile, onSave }: ProfileFormProps) {
 
     const payload: FashionProfileUpdate = {
       name: name.trim() || null,
+      age: parsedAge,
+      sex: sex || null,
       height_cm: height,
       weight_kg: weight,
       preferences: {
@@ -118,6 +130,42 @@ export function ProfileForm({ profile, onSave }: ProfileFormProps) {
             className="w-full border border-sand bg-cream px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ink"
             autoComplete="name"
           />
+        </div>
+        <div className="grid sm:grid-cols-2 gap-5">
+          <div>
+            <label htmlFor="profile-age" className="block text-sm text-stone-600 mb-2">
+              Age
+            </label>
+            <input
+              id="profile-age"
+              type="number"
+              inputMode="numeric"
+              min={13}
+              max={120}
+              step={1}
+              value={age}
+              onChange={(event) => setAge(event.target.value)}
+              className="w-full border border-sand bg-cream px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ink"
+            />
+          </div>
+          <div>
+            <label htmlFor="profile-sex" className="block text-sm text-stone-600 mb-2">
+              Sex
+            </label>
+            <select
+              id="profile-sex"
+              value={sex}
+              onChange={(event) => setSex(event.target.value)}
+              className="w-full border border-sand bg-cream px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ink"
+            >
+              <option value="">Select…</option>
+              {SEX_OPTIONS.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.labelEs}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </section>
 

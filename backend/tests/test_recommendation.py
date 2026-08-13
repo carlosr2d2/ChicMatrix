@@ -89,3 +89,62 @@ def test_recommend_boosts_matching_style_tags(db_session, sample_user, sample_re
     assert recommendations[0].product.name == "Tailored Formal Blazer"
     assert any("Matches style" in reason for reason in recommendations[0].reasons)
     assert any(tag.code == "formal" for tag in recommendations[0].product.style_tags)
+
+
+def test_recommend_excludes_opposite_sex_products(db_session, sample_user, sample_retailer):
+    sample_user.sex = "male"
+    sample_user.preferences = {
+        "colors": ["black"],
+        "brands": ["Shared Brand"],
+        "styles": ["casual"],
+    }
+    sample_user.habits = {"occasions": ["casual"]}
+    db_session.commit()
+
+    womens = Product(
+        retailer_id=sample_retailer.id,
+        external_id="w-1",
+        name="Blue Top",
+        description="Category: Women > Tops",
+        brand="Shared Brand",
+        category="casual",
+        color="black",
+    )
+    dress = Product(
+        retailer_id=sample_retailer.id,
+        external_id="w-2",
+        name="Silk Midi Dress",
+        description="Elegant evening dress",
+        brand="Shared Brand",
+        category="casual",
+        color="black",
+    )
+    mens = Product(
+        retailer_id=sample_retailer.id,
+        external_id="m-1",
+        name="Men Tshirt",
+        description="Category: Men > Tshirts",
+        brand="Shared Brand",
+        category="casual",
+        color="black",
+    )
+    unisex = Product(
+        retailer_id=sample_retailer.id,
+        external_id="u-1",
+        name="Cashmere Crewneck",
+        description="Everyday casual crewneck",
+        brand="Shared Brand",
+        category="casual",
+        color="black",
+    )
+    db_session.add_all([womens, dress, mens, unisex])
+    db_session.commit()
+
+    engine = RecommendationEngine(db_session)
+    recommendations = engine.recommend(sample_user, limit=10)
+    names = {item.product.name for item in recommendations}
+
+    assert "Blue Top" not in names
+    assert "Silk Midi Dress" not in names
+    assert "Men Tshirt" in names
+    assert "Cashmere Crewneck" in names

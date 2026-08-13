@@ -12,6 +12,8 @@ const baseProfile: FashionProfile = {
   verified: true,
   role: "user",
   social_provider: null,
+  age: 28,
+  sex: "female",
   height_cm: 172,
   weight_kg: 68,
   body_proportions: null,
@@ -40,11 +42,36 @@ describe("ProfileForm", () => {
 
     expect(onSave).toHaveBeenCalledWith(
       expect.objectContaining({
+        age: 28,
+        sex: "female",
         height_cm: 175,
         preferences: { colors: ["navy"], brands: ["Urban Loom"], styles: [] },
       }),
     );
     expect(await screen.findByText(/Profile saved/i)).toBeInTheDocument();
+  });
+
+  it("submits age and sex updates", async () => {
+    const user = userEvent.setup();
+    const onSave = jest.fn().mockResolvedValue({
+      ...baseProfile,
+      age: 31,
+      sex: "male",
+    });
+
+    render(<ProfileForm profile={baseProfile} onSave={onSave} />);
+
+    await user.clear(screen.getByLabelText("Age"));
+    await user.type(screen.getByLabelText("Age"), "31");
+    await user.selectOptions(screen.getByLabelText("Sex"), "male");
+    await user.click(screen.getByRole("button", { name: "Save profile" }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        age: 31,
+        sex: "male",
+      }),
+    );
   });
 
   it("toggles preferred styles into the save payload", async () => {

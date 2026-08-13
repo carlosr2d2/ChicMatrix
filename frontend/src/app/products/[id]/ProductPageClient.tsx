@@ -58,7 +58,13 @@ export function ProductPageClient({ productId }: ProductPageClientProps) {
         {data ? (
           <div className="mt-12 grid md:grid-cols-2 gap-10 md:gap-16 animate-fade-in">
             <div className="relative aspect-[3/4] overflow-hidden bg-sand">
-              <ProductImage src={data.image_url} alt={data.name} sizes="(max-width: 768px) 100vw, 50vw" />
+              <ProductImage
+                src={data.image_url}
+                alt={data.name}
+                sizes="(max-width: 768px) 100vw, 50vw"
+                priority
+                variant="hero"
+              />
             </div>
             <div>
               <p className="text-xs tracking-[0.25em] uppercase text-stone-500 mb-3">

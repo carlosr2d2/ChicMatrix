@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     # Style classifier: f0 | f1 | hybrid
     style_classifier_mode: str = "hybrid"
 
+    # Local product image cache (disk). Shared volume in Docker.
+    media_root: str = "media"
+
     class Config:
         env_file = ".env"
 

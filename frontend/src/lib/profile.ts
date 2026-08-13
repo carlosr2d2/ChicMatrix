@@ -8,6 +8,8 @@ export type FashionProfile = {
   verified: boolean;
   role: string;
   social_provider: string | null;
+  age: number | null;
+  sex: string | null;
   height_cm: number | null;
   weight_kg: number | null;
   body_proportions: Record<string, unknown> | null;
@@ -26,6 +28,8 @@ export type FashionProfile = {
 
 export type FashionProfileUpdate = {
   name?: string | null;
+  age?: number | null;
+  sex?: string | null;
   height_cm?: number | null;
   weight_kg?: number | null;
   preferences?: {
@@ -75,11 +79,12 @@ export function csvToList(value: string): string[] {
 }
 
 export function isProfileComplete(profile: FashionProfile): boolean {
+  const hasIdentity = profile.age != null && Boolean(profile.sex);
   const hasBiometrics = profile.height_cm != null && profile.weight_kg != null;
   const hasPreferences =
     (profile.preferences?.colors?.length ?? 0) > 0 ||
     (profile.preferences?.brands?.length ?? 0) > 0 ||
     (profile.preferences?.styles?.length ?? 0) > 0;
   const hasHabits = (profile.habits?.occasions?.length ?? 0) > 0;
-  return hasBiometrics && hasPreferences && hasHabits;
+  return hasIdentity && hasBiometrics && hasPreferences && hasHabits;
 }

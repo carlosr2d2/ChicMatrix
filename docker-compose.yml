@@ -64,6 +64,9 @@ services:
       JWT_ACCESS_TOKEN_EXPIRE_MINUTES: "30"
       JWT_REFRESH_TOKEN_EXPIRE_DAYS: "7"
       STYLE_CLASSIFIER_MODE: hybrid
+      MEDIA_ROOT: /app/media
+    volumes:
+      - product_media:/app/media
     ports:
       - "8001:8000"
     depends_on:
@@ -105,6 +108,10 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       LOG_LEVEL: INFO
       STYLE_CLASSIFIER_MODE: hybrid
+      MEDIA_ROOT: /app/media
+      API_BASE_URL: http://localhost:8001
+    volumes:
+      - product_media:/app/media
     depends_on:
       db:
         condition: service_healthy
@@ -171,5 +178,6 @@ networks:
 volumes:
   postgres_data:
   redis_data:
+  product_media:
   prometheus_data:
   grafana_data:

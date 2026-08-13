@@ -96,6 +96,8 @@ def test_update_my_profile(client: TestClient, db_session):
         "/users/me/profile",
         headers=headers,
         json={
+            "age": 29,
+            "sex": "female",
             "height_cm": 175,
             "weight_kg": 70,
             "preferences": {"colors": ["navy", "beige"], "brands": ["Maison Noir"]},
@@ -104,9 +106,21 @@ def test_update_my_profile(client: TestClient, db_session):
     )
     assert response.status_code == 200
     data = response.json()
+    assert data["age"] == 29
+    assert data["sex"] == "female"
     assert data["height_cm"] == 175
     assert data["preferences"]["colors"] == ["navy", "beige"]
     assert data["habits"]["occasions"] == ["office", "casual"]
+
+
+def test_update_my_profile_rejects_invalid_sex(client: TestClient, db_session):
+    headers = _auth_headers(client, db_session, email="profile-sex@chicmatrix.app")
+    response = client.patch(
+        "/users/me/profile",
+        headers=headers,
+        json={"sex": "alien"},
+    )
+    assert response.status_code == 422
 
 
 def test_get_my_profile_requires_auth(client: TestClient):

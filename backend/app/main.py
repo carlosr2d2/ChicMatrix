@@ -4,12 +4,14 @@ import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from fastapi.staticfiles import StaticFiles
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.api import health, login, products, recommend, register, retailers, scrape, social, users, verify
 from app.config import settings
 from app.logging_config import setup_logging
 from app.metrics import REQUEST_COUNT, REQUEST_LATENCY
+from app.services.image_cache import media_root
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -19,6 +21,10 @@ app = FastAPI(
     description="Personalized fashion platform with price scraping",
     version="1.0.0",
 )
+
+# Cached product images (disk). Must exist before mount.
+_media = media_root()
+app.mount("/media", StaticFiles(directory=str(_media)), name="media")
 
 app.add_middleware(
     CORSMiddleware,

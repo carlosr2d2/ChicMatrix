@@ -30,6 +30,8 @@ class User(Base):
 
     # Fashion profile (ChicMatrix)
     name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sex: Mapped[str | None] = mapped_column(String(32), nullable=True)
     height_cm: Mapped[float | None] = mapped_column(Float, nullable=True)
     weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
     body_proportions: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
@@ -142,6 +144,7 @@ class Product(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    image_source_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     product_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     category: Mapped[str | None] = mapped_column(String(120), nullable=True)
     brand: Mapped[str | None] = mapped_column(String(120), nullable=True)

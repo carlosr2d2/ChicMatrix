@@ -110,6 +110,8 @@ DEMO_USER = {
     "verified": True,
     "consent_given_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
     "consent_version": "1.0",
+    "age": 28,
+    "sex": "female",
     "height_cm": 172.0,
     "weight_kg": 68.0,
     "body_proportions": {"waist_cm": 76, "hips_cm": 98, "shoulders_cm": 42},
@@ -156,6 +158,10 @@ def seed_database(db: Session) -> None:
         prefs = dict(user.preferences or {})
         prefs.setdefault("styles", DEMO_USER["preferences"]["styles"])
         user.preferences = prefs
+        if user.age is None:
+            user.age = DEMO_USER["age"]
+        if not user.sex:
+            user.sex = DEMO_USER["sex"]
 
     admin = db.query(User).filter(User.email == ADMIN_USER["email"]).first()
     if not admin:

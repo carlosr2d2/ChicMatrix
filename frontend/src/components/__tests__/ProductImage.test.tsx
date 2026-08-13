@@ -22,4 +22,18 @@ describe("ProductImage", () => {
 
     expect(screen.getByText("Sin imagen")).toBeInTheDocument();
   });
+
+  it("renders with priority for hero images", () => {
+    render(
+      <div className="relative h-40 w-32">
+        <ProductImage
+          src="https://images.unsplash.com/photo-1.jpg"
+          alt="Hero piece"
+          priority
+          variant="hero"
+        />
+      </div>,
+    );
+    expect(screen.getByRole("img", { name: "Hero piece" })).toBeInTheDocument();
+  });
 });

@@ -9,6 +9,7 @@ from app.schemas.schemas import (
     ProductListResponse,
     ProductStyleTagOut,
 )
+from app.services.image_cache import absolute_image_url
 
 router = APIRouter(prefix="/products", tags=["catalog"])
 
@@ -56,7 +57,7 @@ def _to_list_item(
         id=product.id,
         name=product.name,
         description=product.description,
-        image_url=product.image_url,
+        image_url=absolute_image_url(product.image_url),
         product_url=product.product_url,
         category=product.category,
         brand=product.brand,
