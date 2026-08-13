@@ -23,6 +23,17 @@ COMMON_SELECTORS = {
     "description": ".description",
 }
 
+# Public practice storefront (SSR HTML). Snapshot also kept for offline CI:
+# fixtures/scraping/automation_exercise_products.html
+LIVE_HTTP_SELECTORS = {
+    "item": ".product-image-wrapper",
+    "name": ".productinfo p",
+    "price": ".productinfo h2",
+    "image": ".productinfo img",
+    "link": "a[href*='product_details']",
+    "default_category": "casual",
+}
+
 DEMO_RETAILERS = [
     {
         "name": "Maison Noir",
@@ -65,6 +76,25 @@ DEMO_RETAILERS = [
                 **COMMON_SELECTORS,
                 "default_category": "evening",
             },
+        },
+    },
+    {
+        "name": "Practice Boutique",
+        "base_url": "https://automationexercise.com",
+        "scraping_config": {
+            "engine": "httpx",
+            # Live HTTP listing (admin-triggered, single page). Offline tests use
+            # fixture://automation_exercise_products.html with the same selectors.
+            "listing_url": "https://automationexercise.com/products",
+            "request_delay_ms": 750,
+            "headers": {
+                "User-Agent": (
+                    "ChicMatrixBot/1.0 (+https://github.com/carlosr2d2/ChicMatrix; demo)"
+                ),
+                "Accept": "text/html,application/xhtml+xml",
+            },
+            "currency": "INR",
+            "selectors": LIVE_HTTP_SELECTORS,
         },
     },
 ]

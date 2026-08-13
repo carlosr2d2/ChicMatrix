@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import unquote, urljoin, urlparse
@@ -14,6 +15,7 @@ from app.services.browser_fetcher import PlaywrightFetcher
 from app.services.style_tagging import apply_style_classification
 
 logger = logging.getLogger(__name__)
+DEFAULT_BOT_UA = "ChicMatrixBot/1.0 (+https://github.com/carlosr2d2/ChicMatrix; demo)"
 
 
 def scraping_fixtures_dir() -> Path:
@@ -42,7 +44,9 @@ class ScrapingService:
       items = self._demo_items(config["demo_items"])
     else:
       listing_url = config.get("listing_url", retailer.base_url)
-      headers = config.get("headers", {"User-Agent": "ChicMatrixBot/1.0"})
+      headers = config.get("headers") or {"User-Agent": DEFAULT_BOT_UA}
+      if "User-Agent" not in headers:
+        headers = {**headers, "User-Agent": DEFAULT_BOT_UA}
       logger.info("Starting scrape", extra={"retailer": retailer.name, "url": listing_url})
 
       html = self._fetch_html(listing_url, config, headers)
@@ -112,6 +116,7 @@ class ScrapingService:
     if local_html is not None:
       return local_html
 
+    self._polite_delay(config)
     engine = config.get("engine", "httpx")
     if engine == "playwright":
       if not PlaywrightFetcher.is_available():
@@ -123,6 +128,17 @@ class ScrapingService:
       response = client.get(url, headers=headers)
       response.raise_for_status()
       return response.text
+
+  @staticmethod
+  def _polite_delay(config: dict) -> None:
+    """Optional pause before live HTTP/Playwright fetches (skipped for fixtures)."""
+    delay_ms = config.get("request_delay_ms", 0)
+    try:
+      delay_ms = int(delay_ms)
+    except (TypeError, ValueError):
+      delay_ms = 0
+    if delay_ms > 0:
+      time.sleep(delay_ms / 1000.0)
 
   def _read_local_listing(self, url: str, config: dict) -> str | None:
     """Load HTML from fixture:// or file:// so scrapes stay demo-safe offline."""
@@ -239,7 +255,9 @@ class ScrapingService:
   def _parse_price(raw: str | None) -> float | None:
     if not raw:
       return None
-    match = re.search(r"[\d,.]+", raw.replace(",", ""))
+    # Require a digit so currency dots like "Rs." are not treated as amounts.
+    cleaned = raw.replace(",", "")
+    match = re.search(r"\d+(?:\.\d+)?", cleaned)
     if not match:
       return None
     try:

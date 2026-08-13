@@ -1,4 +1,5 @@
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -172,6 +173,7 @@ def test_missing_fixture_raises(db_session):
     [
         ("$129.99", 129.99),
         ("1,299.00", 1299.0),
+        ("Rs. 500", 500.0),
         ("invalid", None),
         (None, None),
     ],
@@ -185,4 +187,108 @@ def test_scraping_fixtures_dir_contains_seed_html():
     assert (fixtures / "maison_noir.html").is_file()
     assert (fixtures / "urban_loom.html").is_file()
     assert (fixtures / "atelier_vue.html").is_file()
+    assert (fixtures / "automation_exercise_products.html").is_file()
     assert Path(fixtures).name == "scraping"
+
+
+def test_scrape_live_http_fixture_snapshot(db_session):
+    """Offline regression for Practice Boutique selectors (same DOM as live site)."""
+    from app.seed import LIVE_HTTP_SELECTORS
+
+    retailer = Retailer(
+        name="Practice Boutique Fixture",
+        base_url="https://automationexercise.com",
+        scraping_config={
+            "engine": "httpx",
+            "listing_url": "fixture://automation_exercise_products.html",
+            "currency": "INR",
+            "selectors": LIVE_HTTP_SELECTORS,
+        },
+        is_active=True,
+    )
+    db_session.add(retailer)
+    db_session.commit()
+    db_session.refresh(retailer)
+
+    result = ScrapingService(db_session).scrape_retailer(retailer.id)
+    assert result["products_created"] >= 30
+    assert result["products_classified"] == result["total"]
+
+    products = db_session.query(Product).filter(Product.retailer_id == retailer.id).all()
+    names = {p.name for p in products}
+    assert "Blue Top" in names
+    assert "Sleeveless Dress" in names
+
+    blue = next(p for p in products if p.name == "Blue Top")
+    assert blue.product_url and blue.product_url.endswith("/product_details/1")
+    assert blue.image_url and "get_product_picture/1" in blue.image_url
+    assert blue.category == "casual"
+
+    prices = db_session.query(Price).filter(Price.retailer_id == retailer.id).all()
+    assert any(p.amount == 500.0 and p.currency == "INR" for p in prices)
+
+
+def test_polite_delay_skipped_for_fixtures(db_session):
+    retailer = Retailer(
+        name="Delay Fixture Shop",
+        base_url="https://fixture.demo",
+        scraping_config={
+            "engine": "httpx",
+            "listing_url": "fixture://maison_noir.html",
+            "request_delay_ms": 5000,
+            "currency": "USD",
+            "selectors": {
+                "item": "article.product",
+                "name": ".product-title",
+                "price": ".price",
+            },
+        },
+        is_active=True,
+    )
+    db_session.add(retailer)
+    db_session.commit()
+    db_session.refresh(retailer)
+
+    with patch("app.services.scraping.time.sleep") as sleep:
+        ScrapingService(db_session).scrape_retailer(retailer.id)
+        sleep.assert_not_called()
+
+
+def test_polite_delay_applies_for_http(monkeypatch):
+    service = ScrapingService(db=None)
+    slept: list[float] = []
+
+    monkeypatch.setattr("app.services.scraping.time.sleep", lambda s: slept.append(s))
+    monkeypatch.setattr(
+        service,
+        "_read_local_listing",
+        lambda url, config: None,
+    )
+
+    class _Resp:
+        text = "<html></html>"
+
+        def raise_for_status(self):
+            return None
+
+    class _Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def get(self, url, headers=None):
+            return _Resp()
+
+    monkeypatch.setattr("app.services.scraping.httpx.Client", _Client)
+    html = service._fetch_html(
+        "https://example.com/products",
+        {"engine": "httpx", "request_delay_ms": 750},
+        {"User-Agent": "test"},
+    )
+    assert html == "<html></html>"
+    assert slept == [0.75]

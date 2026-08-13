@@ -146,6 +146,19 @@ Seed retailers scrape **local HTML fixtures** (not live storefronts), so the pip
 | Urban Loom | `fixture://urban_loom.html` |
 | Atelier Vue | `fixture://atelier_vue.html` |
 
+### Live HTTP retailer (Practice Boutique)
+
+A fourth seeded retailer hits a **public practice fashion catalog** over real HTTP (admin-only, single listing page):
+
+| Field | Value |
+|-------|--------|
+| Name | Practice Boutique |
+| URL | `https://automationexercise.com/products` |
+| Engine | `httpx` |
+| Politeness | `request_delay_ms: 750` + identifying `User-Agent` |
+
+Offline CI uses the same DOM snapshot: `fixture://automation_exercise_products.html`.
+
 Fixtures live in `backend/fixtures/scraping/`. The worker parses them with the same BeautifulSoup selectors used for real HTTP pages, including **description** and **product URL**, then runs the **style classifier** (default **hybrid** = F0 lexicon first, F1 NLP fallback) into `style_tags` / `product_style_tags`.
 
 Closed style vocabulary v1: `formal`, `sport`, `biker`, `rocker`, `casual`, `minimal`, `streetwear`.
