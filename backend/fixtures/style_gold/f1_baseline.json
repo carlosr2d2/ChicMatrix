@@ -1,0 +1,440 @@
+{
+  "model_path": "C:/Repos/ChicMatrix/backend/fixtures/style_models/f1_tfidf_v1.json",
+  "threshold": 0.18,
+  "train_size": 397,
+  "train_subsets": [
+    "lexicon",
+    "negative",
+    "overlap",
+    "paraphrase"
+  ],
+  "notes": {
+    "hybrid": "F0-first; F1 only when F0 returns no tags",
+    "hybrid_holdout_paraphrase": "Honest paraphrase generalization: F1 trained without paraphrase subset"
+  },
+  "reports": {
+    "f0": {
+      "model_version": "rules-v1",
+      "gold_size": 397,
+      "exact_match": 0.733,
+      "micro_precision": 1.0,
+      "micro_recall": 0.7476,
+      "micro_f1": 0.8556,
+      "macro_f1": 0.8458,
+      "per_tag": [
+        {
+          "tag": "formal",
+          "support": 70,
+          "precision": 1.0,
+          "recall": 0.5714,
+          "f1": 0.7273,
+          "tp": 40,
+          "fp": 0,
+          "fn": 30
+        },
+        {
+          "tag": "sport",
+          "support": 59,
+          "precision": 1.0,
+          "recall": 0.5932,
+          "f1": 0.7447,
+          "tp": 35,
+          "fp": 0,
+          "fn": 24
+        },
+        {
+          "tag": "biker",
+          "support": 72,
+          "precision": 1.0,
+          "recall": 0.9444,
+          "f1": 0.9714,
+          "tp": 68,
+          "fp": 0,
+          "fn": 4
+        },
+        {
+          "tag": "rocker",
+          "support": 68,
+          "precision": 1.0,
+          "recall": 0.8235,
+          "f1": 0.9032,
+          "tp": 56,
+          "fp": 0,
+          "fn": 12
+        },
+        {
+          "tag": "casual",
+          "support": 65,
+          "precision": 1.0,
+          "recall": 0.8154,
+          "f1": 0.8983,
+          "tp": 53,
+          "fp": 0,
+          "fn": 12
+        },
+        {
+          "tag": "minimal",
+          "support": 43,
+          "precision": 1.0,
+          "recall": 0.7209,
+          "f1": 0.8378,
+          "tp": 31,
+          "fp": 0,
+          "fn": 12
+        },
+        {
+          "tag": "streetwear",
+          "support": 43,
+          "precision": 1.0,
+          "recall": 0.7209,
+          "f1": 0.8378,
+          "tp": 31,
+          "fp": 0,
+          "fn": 12
+        }
+      ],
+      "by_subset": {
+        "lexicon": {
+          "n": 212,
+          "exact_match": 1.0,
+          "micro_precision": 1.0,
+          "micro_recall": 1.0,
+          "micro_f1": 1.0
+        },
+        "negative": {
+          "n": 24,
+          "exact_match": 1.0,
+          "micro_precision": 0.0,
+          "micro_recall": 0.0,
+          "micro_f1": 0.0
+        },
+        "overlap": {
+          "n": 47,
+          "exact_match": 1.0,
+          "micro_precision": 1.0,
+          "micro_recall": 1.0,
+          "micro_f1": 1.0
+        },
+        "paraphrase": {
+          "n": 114,
+          "exact_match": 0.0702,
+          "micro_precision": 1.0,
+          "micro_recall": 0.0702,
+          "micro_f1": 0.1311
+        }
+      }
+    },
+    "f1": {
+      "model_version": "nlp-tfidf-v1",
+      "gold_size": 397,
+      "exact_match": 0.8741,
+      "micro_precision": 0.897,
+      "micro_recall": 0.9952,
+      "micro_f1": 0.9436,
+      "macro_f1": 0.9553,
+      "per_tag": [
+        {
+          "tag": "formal",
+          "support": 70,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 70,
+          "fp": 0,
+          "fn": 0
+        },
+        {
+          "tag": "sport",
+          "support": 59,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 59,
+          "fp": 0,
+          "fn": 0
+        },
+        {
+          "tag": "biker",
+          "support": 72,
+          "precision": 0.7609,
+          "recall": 0.9722,
+          "f1": 0.8537,
+          "tp": 70,
+          "fp": 22,
+          "fn": 2
+        },
+        {
+          "tag": "rocker",
+          "support": 68,
+          "precision": 0.7312,
+          "recall": 1.0,
+          "f1": 0.8447,
+          "tp": 68,
+          "fp": 25,
+          "fn": 0
+        },
+        {
+          "tag": "casual",
+          "support": 65,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 65,
+          "fp": 0,
+          "fn": 0
+        },
+        {
+          "tag": "minimal",
+          "support": 43,
+          "precision": 0.9773,
+          "recall": 1.0,
+          "f1": 0.9885,
+          "tp": 43,
+          "fp": 1,
+          "fn": 0
+        },
+        {
+          "tag": "streetwear",
+          "support": 43,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 43,
+          "fp": 0,
+          "fn": 0
+        }
+      ],
+      "by_subset": {
+        "lexicon": {
+          "n": 212,
+          "exact_match": 0.7736,
+          "micro_precision": 0.8154,
+          "micro_recall": 1.0,
+          "micro_f1": 0.8983
+        },
+        "negative": {
+          "n": 24,
+          "exact_match": 1.0,
+          "micro_precision": 0.0,
+          "micro_recall": 0.0,
+          "micro_f1": 0.0
+        },
+        "overlap": {
+          "n": 47,
+          "exact_match": 1.0,
+          "micro_precision": 1.0,
+          "micro_recall": 1.0,
+          "micro_f1": 1.0
+        },
+        "paraphrase": {
+          "n": 114,
+          "exact_match": 0.9825,
+          "micro_precision": 1.0,
+          "micro_recall": 0.9825,
+          "micro_f1": 0.9912
+        }
+      }
+    },
+    "hybrid": {
+      "model_version": "hybrid-f0-f1-v1",
+      "gold_size": 397,
+      "exact_match": 0.995,
+      "micro_precision": 1.0,
+      "micro_recall": 0.9952,
+      "micro_f1": 0.9976,
+      "macro_f1": 0.998,
+      "per_tag": [
+        {
+          "tag": "formal",
+          "support": 70,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 70,
+          "fp": 0,
+          "fn": 0
+        },
+        {
+          "tag": "sport",
+          "support": 59,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 59,
+          "fp": 0,
+          "fn": 0
+        },
+        {
+          "tag": "biker",
+          "support": 72,
+          "precision": 1.0,
+          "recall": 0.9722,
+          "f1": 0.9859,
+          "tp": 70,
+          "fp": 0,
+          "fn": 2
+        },
+        {
+          "tag": "rocker",
+          "support": 68,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 68,
+          "fp": 0,
+          "fn": 0
+        },
+        {
+          "tag": "casual",
+          "support": 65,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 65,
+          "fp": 0,
+          "fn": 0
+        },
+        {
+          "tag": "minimal",
+          "support": 43,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 43,
+          "fp": 0,
+          "fn": 0
+        },
+        {
+          "tag": "streetwear",
+          "support": 43,
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 43,
+          "fp": 0,
+          "fn": 0
+        }
+      ],
+      "by_subset": {
+        "lexicon": {
+          "n": 212,
+          "exact_match": 1.0,
+          "micro_precision": 1.0,
+          "micro_recall": 1.0,
+          "micro_f1": 1.0
+        },
+        "negative": {
+          "n": 24,
+          "exact_match": 1.0,
+          "micro_precision": 0.0,
+          "micro_recall": 0.0,
+          "micro_f1": 0.0
+        },
+        "overlap": {
+          "n": 47,
+          "exact_match": 1.0,
+          "micro_precision": 1.0,
+          "micro_recall": 1.0,
+          "micro_f1": 1.0
+        },
+        "paraphrase": {
+          "n": 114,
+          "exact_match": 0.9825,
+          "micro_precision": 1.0,
+          "micro_recall": 0.9825,
+          "micro_f1": 0.9912
+        }
+      }
+    },
+    "hybrid_holdout_paraphrase": {
+      "model_version": "hybrid-f0-f1-v1",
+      "gold_size": 114,
+      "exact_match": 0.4386,
+      "micro_precision": 0.931,
+      "micro_recall": 0.4737,
+      "micro_f1": 0.6279,
+      "macro_f1": 0.4652,
+      "per_tag": [
+        {
+          "tag": "formal",
+          "support": 30,
+          "precision": 1.0,
+          "recall": 0.7667,
+          "f1": 0.8679,
+          "tp": 23,
+          "fp": 0,
+          "fn": 7
+        },
+        {
+          "tag": "sport",
+          "support": 24,
+          "precision": 1.0,
+          "recall": 0.4583,
+          "f1": 0.6286,
+          "tp": 11,
+          "fp": 0,
+          "fn": 13
+        },
+        {
+          "tag": "biker",
+          "support": 12,
+          "precision": 1.0,
+          "recall": 0.6667,
+          "f1": 0.8,
+          "tp": 8,
+          "fp": 0,
+          "fn": 4
+        },
+        {
+          "tag": "rocker",
+          "support": 12,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 12
+        },
+        {
+          "tag": "casual",
+          "support": 12,
+          "precision": 0.9231,
+          "recall": 1.0,
+          "f1": 0.96,
+          "tp": 12,
+          "fp": 1,
+          "fn": 0
+        },
+        {
+          "tag": "minimal",
+          "support": 12,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 3,
+          "fn": 12
+        },
+        {
+          "tag": "streetwear",
+          "support": 12,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 12
+        }
+      ],
+      "by_subset": {
+        "paraphrase": {
+          "n": 114,
+          "exact_match": 0.4386,
+          "micro_precision": 0.931,
+          "micro_recall": 0.4737,
+          "micro_f1": 0.6279
+        }
+      }
+    }
+  }
+}

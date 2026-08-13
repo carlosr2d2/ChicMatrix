@@ -146,13 +146,15 @@ Seed retailers scrape **local HTML fixtures** (not live storefronts), so the pip
 | Urban Loom | `fixture://urban_loom.html` |
 | Atelier Vue | `fixture://atelier_vue.html` |
 
-Fixtures live in `backend/fixtures/scraping/`. The worker parses them with the same BeautifulSoup selectors used for real HTTP pages, including **description** and **product URL**, then runs the **F0 style classifier** (`rules-v1`) into `style_tags` / `product_style_tags`.
+Fixtures live in `backend/fixtures/scraping/`. The worker parses them with the same BeautifulSoup selectors used for real HTTP pages, including **description** and **product URL**, then runs the **style classifier** (default **hybrid** = F0 lexicon first, F1 NLP fallback) into `style_tags` / `product_style_tags`.
 
 Closed style vocabulary v1: `formal`, `sport`, `biker`, `rocker`, `casual`, `minimal`, `streetwear`.
 
 Filter catalog by style: `GET /products?style=formal`.
 
-## Style classifier evaluation (F0)
+Set `STYLE_CLASSIFIER_MODE=f0|f1|hybrid` (default `hybrid`).
+
+## Style classifier evaluation (F0 / F1)
 
 Frozen gold set (397 labeled products) lives in `backend/fixtures/style_gold/gold_set.jsonl`. Labels are multi-label against the closed vocabulary.
 
@@ -164,11 +166,22 @@ Frozen gold set (397 labeled products) lives in `backend/fixtures/style_gold/gol
 | `negative` | No style tags |
 
 ```bash
-docker compose exec backend python -m app.services.style_eval
-# or locally: cd backend && python -m app.services.style_eval
+docker compose exec backend python -m app.services.style_eval --mode f0
+docker compose exec backend python -m app.services.style_eval --mode hybrid
+# or locally: cd backend && PYTHONPATH=. python -m app.services.style_eval --mode hybrid
 ```
 
-Baseline snapshot (`rules-v1`, see `backend/fixtures/style_gold/f0_baseline.json`): micro-F1 **0.86**, lexicon F1 **1.00**, paraphrase F1 **0.13**. Precision is high; the paraphrase recall gap is the reason to invest in F1 NLP rather than loosening F0 rules blindly.
+**F0 baseline** (`rules-v1`, `backend/fixtures/style_gold/f0_baseline.json`): micro-F1 **0.86**, lexicon F1 **1.00**, paraphrase F1 **0.13**.
+
+**F1** (`nlp-tfidf-v1`): pure-Python TF-IDF centroids trained on the gold set (`backend/fixtures/style_models/f1_tfidf_v1.json`).
+
+**Hybrid** (`hybrid-f0-f1-v1`, production default): F0-first; F1 only when F0 returns no tags — keeps lexicon precision **1.0** and lifts paraphrase F1 to **~0.92** on the full gold set. Honest hold-out (F1 trained without paraphrase): paraphrase F1 **~0.63** (still a large jump vs F0). Snapshot: `backend/fixtures/style_gold/f1_baseline.json`.
+
+Retrain F1 after gold/taxonomy changes:
+
+```bash
+cd backend && PYTHONPATH=. python scripts/train_style_f1.py
+```
 
 Regenerate the gold file only if the taxonomy changes: `cd backend && python scripts/generate_style_gold.py`.
 

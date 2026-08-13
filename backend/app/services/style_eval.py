@@ -1,17 +1,33 @@
-"""Evaluate StyleClassifier F0 against the frozen gold set."""
+"""Evaluate style classifiers against the frozen gold set."""
 
 from __future__ import annotations
 
+import argparse
 import json
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Protocol
 
 from app.models.enums import StyleCode
-from app.services.style_classifier import MODEL_VERSION, StyleClassifier
+from app.services.style_classifier import ClassificationResult, StyleClassifier
+from app.services.style_classifier_factory import get_style_classifier
 
 GOLD_SET_PATH = Path(__file__).resolve().parents[2] / "fixtures" / "style_gold" / "gold_set.jsonl"
 STYLE_CODES = [c.value for c in StyleCode]
+
+
+class SupportsClassify(Protocol):
+    def classify(
+        self,
+        *,
+        name: str,
+        description: str | None = None,
+        brand: str | None = None,
+        category: str | None = None,
+        color: str | None = None,
+        locale: str | None = None,
+    ) -> ClassificationResult: ...
 
 
 @dataclass
@@ -65,7 +81,7 @@ def _prf(tp: int, fp: int, fn: int) -> tuple[float, float, float]:
 
 def evaluate(
     items: list[dict] | None = None,
-    classifier: StyleClassifier | None = None,
+    classifier: SupportsClassify | None = None,
 ) -> EvalReport:
     gold = items if items is not None else load_gold_set()
     clf = classifier or StyleClassifier()
@@ -81,17 +97,20 @@ def evaluate(
     subset_fn = defaultdict(int)
     subset_n = defaultdict(int)
     subset_exact = defaultdict(int)
+    model_version = "unknown"
 
     for row in gold:
         gold_tags = set(row.get("gold_tags") or [])
-        predicted = {t.tag for t in clf.classify(
+        result = clf.classify(
             name=row.get("name") or "",
             description=row.get("description"),
             brand=row.get("brand"),
             category=row.get("category"),
             color=row.get("color"),
             locale=row.get("locale"),
-        ).tags}
+        )
+        model_version = result.model_version
+        predicted = {t.tag for t in result.tags}
 
         subset = row.get("subset") or "unknown"
         subset_n[subset] += 1
@@ -145,7 +164,7 @@ def evaluate(
         }
 
     return EvalReport(
-        model_version=MODEL_VERSION,
+        model_version=model_version,
         gold_size=len(gold),
         exact_match=round(exact / len(gold), 4) if gold else 0.0,
         micro_precision=round(micro_p, 4),
@@ -164,7 +183,24 @@ def report_to_dict(report: EvalReport) -> dict:
 
 
 def main() -> None:
-    report = evaluate()
+    parser = argparse.ArgumentParser(description="Evaluate style classifier on gold set")
+    parser.add_argument(
+        "--mode",
+        choices=["f0", "f1", "hybrid", "configured"],
+        default="f0",
+        help="Which classifier to evaluate (default: f0 for regression baseline)",
+    )
+    args = parser.parse_args()
+    if args.mode == "f0":
+        clf: SupportsClassify = StyleClassifier()
+    elif args.mode == "configured":
+        clf = get_style_classifier()
+    else:
+        from app.services.style_classifier_f1 import StyleClassifierF1, StyleClassifierHybrid
+
+        clf = StyleClassifierF1() if args.mode == "f1" else StyleClassifierHybrid()
+
+    report = evaluate(classifier=clf)
     print(json.dumps(report_to_dict(report), indent=2))
 
 

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.models.models import Product, ProductStyleTag, StyleTag
-from app.services.style_classifier import StyleClassifier
+from app.services.style_classifier_factory import get_style_classifier
 
 
 def ensure_style_tags(db: Session) -> dict[str, StyleTag]:
@@ -24,9 +24,9 @@ def ensure_style_tags(db: Session) -> dict[str, StyleTag]:
 
 
 def apply_style_classification(db: Session, product: Product) -> list[ProductStyleTag]:
-    """Replace style assignments for a product using F0 classifier."""
+    """Replace style assignments for a product using the configured classifier."""
     tags_by_code = ensure_style_tags(db)
-    result = StyleClassifier().classify(
+    result = get_style_classifier().classify(
         name=product.name,
         description=product.description,
         brand=product.brand,

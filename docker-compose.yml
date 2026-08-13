@@ -63,6 +63,7 @@ services:
       JWT_ALGORITHM: HS256
       JWT_ACCESS_TOKEN_EXPIRE_MINUTES: "30"
       JWT_REFRESH_TOKEN_EXPIRE_DAYS: "7"
+      STYLE_CLASSIFIER_MODE: hybrid
     ports:
       - "8001:8000"
     depends_on:
@@ -103,6 +104,7 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       LOG_LEVEL: INFO
+      STYLE_CLASSIFIER_MODE: hybrid
     depends_on:
       db:
         condition: service_healthy
