@@ -6,6 +6,7 @@ import logging
 import mimetypes
 import os
 import re
+import time
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -66,6 +67,78 @@ def _already_cached(url: str | None) -> bool:
     if not url:
         return False
     return "/media/products/" in url
+
+
+def _remote_candidate(product: Product) -> str | None:
+    for candidate in (product.image_source_url, product.image_url):
+        if candidate and _is_remote_http(candidate):
+            return candidate
+    return None
+
+
+def product_needs_image_cache(product: Product) -> bool:
+    if _already_cached(product.image_url):
+        return False
+    return _remote_candidate(product) is not None
+
+
+def iter_products_needing_image_cache(
+    db,
+    *,
+    retailer_id: int | None = None,
+    limit: int | None = None,
+) -> list[Product]:
+    query = db.query(Product).order_by(Product.id.asc())
+    if retailer_id is not None:
+        query = query.filter(Product.retailer_id == retailer_id)
+    needing: list[Product] = []
+    for product in query.all():
+        if not product_needs_image_cache(product):
+            continue
+        needing.append(product)
+        if limit is not None and len(needing) >= limit:
+            break
+    return needing
+
+
+def backfill_product_images(
+    db,
+    *,
+    retailer_id: int | None = None,
+    limit: int = 200,
+    delay_ms: int = 0,
+    headers: dict | None = None,
+) -> dict:
+    """
+    Download and cache images for products still pointing at remote URLs.
+
+    Does not re-scrape listings; only fills the disk cache.
+    """
+    products = iter_products_needing_image_cache(
+        db, retailer_id=retailer_id, limit=max(1, limit)
+    )
+    cached = 0
+    failed = 0
+    for product in products:
+        remote = _remote_candidate(product)
+        result = cache_product_image(product, source_url=remote, headers=headers)
+        if result:
+            cached += 1
+        else:
+            failed += 1
+        if delay_ms > 0:
+            time.sleep(delay_ms / 1000.0)
+
+    db.commit()
+    summary = {
+        "attempted": len(products),
+        "cached": cached,
+        "failed": failed,
+        "retailer_id": retailer_id,
+        "limit": limit,
+    }
+    logger.info("Image backfill finished", extra=summary)
+    return summary
 
 
 def cache_product_image(

@@ -78,6 +78,7 @@ Customers never trigger scrapes. Only admins enqueue work; workers write the cat
 | GET    | `/products`               | Catalog from scraped products  |
 | GET    | `/retailers`              | Active retailers               |
 | POST   | `/scrape/{retailer_id}`   | Enqueue scrape (**admin only**) |
+| POST   | `/scrape/images/backfill` | Cache remote product images (**admin only**) |
 | GET    | `/recommend/me`           | Recommendations for JWT user   |
 | GET    | `/recommend/{user_id}`    | Recommendations by user UUID   |
 | PATCH  | `/users/me/profile`       | Update fashion profile         |
@@ -165,6 +166,8 @@ Fixtures live in `backend/fixtures/scraping/`. The worker parses them with the s
 ### Product image cache
 
 Scraped images are downloaded to a shared Docker volume (`product_media` → `MEDIA_ROOT=/app/media`) and served at `GET /media/products/{id}.ext`. The DB keeps the remote original in `image_source_url` and a local `/media/...` path in `image_url` (API responses absolutize with `API_BASE_URL`). Disable per retailer with `"cache_images": false` in `scraping_config`.
+
+To cache images for products that still point at remote URLs **without re-scraping**, admins can enqueue `POST /scrape/images/backfill` (also a button on `/admin`).
 
 Closed style vocabulary v1: `formal`, `sport`, `biker`, `rocker`, `casual`, `minimal`, `streetwear`.
 

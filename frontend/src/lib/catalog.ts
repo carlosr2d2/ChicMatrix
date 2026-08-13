@@ -51,6 +51,15 @@ export type ScrapeResponse = {
   message: string;
 };
 
+export type ImageBackfillResponse = {
+  task_id: string;
+  status: string;
+  message: string;
+  pending_estimate: number;
+  retailer_id: number | null;
+  limit: number;
+};
+
 export type FetchProductsParams = {
   limit?: number;
   offset?: number;
@@ -109,6 +118,20 @@ export async function fetchRetailers(apiUrl?: string): Promise<RetailerListRespo
 export async function enqueueScrape(retailerId: number): Promise<ScrapeResponse> {
   const response = await fetch(`/api/admin/scrape/${retailerId}`, { method: "POST" });
   return parseJson<ScrapeResponse>(response);
+}
+
+export async function enqueueImageBackfill(params?: {
+  retailerId?: number;
+  limit?: number;
+}): Promise<ImageBackfillResponse> {
+  const search = new URLSearchParams();
+  if (params?.retailerId != null) search.set("retailer_id", String(params.retailerId));
+  if (params?.limit != null) search.set("limit", String(params.limit));
+  const qs = search.toString();
+  const response = await fetch(`/api/admin/images/backfill${qs ? `?${qs}` : ""}`, {
+    method: "POST",
+  });
+  return parseJson<ImageBackfillResponse>(response);
 }
 
 export function formatPrice(latest: LatestPrice | null): string {

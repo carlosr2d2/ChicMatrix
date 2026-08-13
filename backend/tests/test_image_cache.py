@@ -91,3 +91,38 @@ def test_cache_product_image_rejects_non_image(db_session, media_tmp):
     with patch("app.services.image_cache.httpx.Client", return_value=fake):
         assert cache_product_image(product) is None
     assert product.image_url.startswith("https://")
+
+
+def test_backfill_product_images_caches_remote_only(db_session, media_tmp):
+    from app.services.image_cache import backfill_product_images
+
+    remote = _product(db_session, "https://cdn.example/a.jpg")
+    already = Product(
+        retailer_id=remote.retailer_id,
+        external_id="c-2",
+        name="Already Local",
+        image_url="/media/products/999.jpg",
+        image_source_url="https://cdn.example/old.jpg",
+    )
+    db_session.add(already)
+    db_session.commit()
+
+    fake = MagicMock()
+    fake.get.return_value.status_code = 200
+    fake.get.return_value.headers = {"content-type": "image/png"}
+    fake.get.return_value.content = b"\x89PNGfake"
+    fake.get.return_value.raise_for_status = MagicMock()
+    fake.__enter__.return_value = fake
+    fake.__exit__.return_value = False
+
+    with patch("app.services.image_cache.httpx.Client", return_value=fake):
+        summary = backfill_product_images(db_session, limit=50)
+
+    assert summary["attempted"] == 1
+    assert summary["cached"] == 1
+    assert summary["failed"] == 0
+    db_session.refresh(remote)
+    assert remote.image_url and remote.image_url.startswith(f"/media/products/{remote.id}.")
+    assert (media_tmp / "products" / Path(remote.image_url).name).is_file()
+    db_session.refresh(already)
+    assert already.image_url == "/media/products/999.jpg"

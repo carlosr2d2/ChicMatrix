@@ -87,3 +87,12 @@ class ScrapeResponse(BaseModel):
     task_id: str
     status: str
     message: str
+
+
+class ImageBackfillResponse(BaseModel):
+    task_id: str
+    status: str
+    message: str
+    pending_estimate: int
+    retailer_id: int | None = None
+    limit: int = 200

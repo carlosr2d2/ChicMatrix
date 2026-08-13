@@ -7,7 +7,7 @@ import { useState } from "react";
 
 import { Alert } from "@/components/auth/Alert";
 import { Spinner } from "@/components/auth/Spinner";
-import { catalogKeys, enqueueScrape, fetchRetailers } from "@/lib/catalog";
+import { catalogKeys, enqueueImageBackfill, enqueueScrape, fetchRetailers } from "@/lib/catalog";
 import { authKeys } from "@/lib/query-keys";
 import { clearSession, fetchCurrentUser } from "@/lib/session";
 
@@ -65,6 +65,19 @@ export function AdminPageClient() {
     onError: (err) => {
       setMessage(null);
       setError(err instanceof Error ? err.message : "Could not enqueue scrapes");
+    },
+  });
+
+  const backfillImages = useMutation({
+    mutationFn: () => enqueueImageBackfill({ limit: 500 }),
+    onSuccess: (result) => {
+      setError(null);
+      setMessage(result.message);
+      queryClient.invalidateQueries({ queryKey: catalogKeys.products });
+    },
+    onError: (err) => {
+      setMessage(null);
+      setError(err instanceof Error ? err.message : "Could not enqueue image backfill");
     },
   });
 
@@ -133,7 +146,8 @@ export function AdminPageClient() {
         <h1 className="section-title mb-4">Catalog scrapes</h1>
         <p className="text-stone-600 font-light mb-10 max-w-2xl">
           Only system administrators can enqueue scrape jobs. Workers process them asynchronously
-          and update products and prices for all customers.
+          and update products and prices for all customers. Use image backfill to cache remote
+          product photos locally without re-scraping listings.
         </p>
 
         <div className="flex flex-wrap gap-3 mb-8">
@@ -147,6 +161,18 @@ export function AdminPageClient() {
               <Spinner label="Queuing…" className="text-white" />
             ) : (
               "Scrape all retailers"
+            )}
+          </button>
+          <button
+            type="button"
+            className="btn-outline text-xs"
+            onClick={() => backfillImages.mutate()}
+            disabled={backfillImages.isPending}
+          >
+            {backfillImages.isPending ? (
+              <Spinner label="Queuing…" />
+            ) : (
+              "Backfill product images"
             )}
           </button>
           <Link href="/#collection" className="btn-outline text-xs">
