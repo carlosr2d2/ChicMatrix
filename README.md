@@ -164,7 +164,7 @@ Fixtures live in `backend/fixtures/scraping/`. The worker parses them with the s
 
 Closed style vocabulary v1: `formal`, `sport`, `biker`, `rocker`, `casual`, `minimal`, `streetwear`.
 
-Filter catalog by style: `GET /products?style=formal`.
+Filter catalog by style: `GET /products?style=formal` (also available as filter chips on the home catalog). Product detail: `GET /products/{id}` and UI route `/products/[id]`.
 
 Set `STYLE_CLASSIFIER_MODE=f0|f1|hybrid` (default `hybrid`).
 

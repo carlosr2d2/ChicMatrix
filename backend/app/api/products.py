@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
@@ -11,6 +11,61 @@ from app.schemas.schemas import (
 )
 
 router = APIRouter(prefix="/products", tags=["catalog"])
+
+
+def _style_tags_out(product: Product) -> list[ProductStyleTagOut]:
+    return [
+        ProductStyleTagOut(
+            code=assignment.tag.code,
+            label_es=assignment.tag.label_es,
+            score=assignment.score,
+            model_version=assignment.model_version,
+        )
+        for assignment in sorted(
+            product.style_assignments,
+            key=lambda a: a.score,
+            reverse=True,
+        )
+        if assignment.tag is not None
+    ]
+
+
+def _latest_price(db: Session, product_id: int) -> LatestPrice | None:
+    latest = (
+        db.query(Price)
+        .filter(Price.product_id == product_id)
+        .order_by(Price.scraped_at.desc())
+        .first()
+    )
+    if not latest:
+        return None
+    return LatestPrice(
+        amount=latest.amount,
+        currency=latest.currency,
+        scraped_at=latest.scraped_at,
+    )
+
+
+def _to_list_item(
+    product: Product,
+    *,
+    retailer_name: str | None,
+    latest_price: LatestPrice | None,
+) -> ProductListItem:
+    return ProductListItem(
+        id=product.id,
+        name=product.name,
+        description=product.description,
+        image_url=product.image_url,
+        product_url=product.product_url,
+        category=product.category,
+        brand=product.brand,
+        color=product.color,
+        retailer_id=product.retailer_id,
+        retailer_name=retailer_name,
+        latest_price=latest_price,
+        style_tags=_style_tags_out(product),
+    )
 
 
 @router.get("", response_model=ProductListResponse)
@@ -50,51 +105,31 @@ def list_products(
         for r in db.query(Retailer).filter(Retailer.id.in_(retailer_ids)).all()
     } if retailer_ids else {}
 
-    items: list[ProductListItem] = []
-    for product in products:
-        latest = (
-            db.query(Price)
-            .filter(Price.product_id == product.id)
-            .order_by(Price.scraped_at.desc())
-            .first()
+    items = [
+        _to_list_item(
+            product,
+            retailer_name=retailers.get(product.retailer_id),
+            latest_price=_latest_price(db, product.id),
         )
-        style_tags = [
-            ProductStyleTagOut(
-                code=assignment.tag.code,
-                label_es=assignment.tag.label_es,
-                score=assignment.score,
-                model_version=assignment.model_version,
-            )
-            for assignment in sorted(
-                product.style_assignments,
-                key=lambda a: a.score,
-                reverse=True,
-            )
-            if assignment.tag is not None
-        ]
-        items.append(
-            ProductListItem(
-                id=product.id,
-                name=product.name,
-                description=product.description,
-                image_url=product.image_url,
-                product_url=product.product_url,
-                category=product.category,
-                brand=product.brand,
-                color=product.color,
-                retailer_id=product.retailer_id,
-                retailer_name=retailers.get(product.retailer_id),
-                latest_price=(
-                    LatestPrice(
-                        amount=latest.amount,
-                        currency=latest.currency,
-                        scraped_at=latest.scraped_at,
-                    )
-                    if latest
-                    else None
-                ),
-                style_tags=style_tags,
-            )
-        )
-
+        for product in products
+    ]
     return ProductListResponse(items=items, total=total)
+
+
+@router.get("/{product_id}", response_model=ProductListItem)
+def get_product(product_id: int, db: Session = Depends(get_db)):
+    product = (
+        db.query(Product)
+        .options(joinedload(Product.style_assignments).joinedload(ProductStyleTag.tag))
+        .filter(Product.id == product_id)
+        .first()
+    )
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    retailer = db.query(Retailer).filter(Retailer.id == product.retailer_id).first()
+    return _to_list_item(
+        product,
+        retailer_name=retailer.name if retailer else None,
+        latest_price=_latest_price(db, product.id),
+    )

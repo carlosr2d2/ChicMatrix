@@ -54,6 +54,22 @@ def test_list_products_filter_by_retailer(client: TestClient, sample_product_wit
     assert response_empty.json()["total"] == 0
 
 
+def test_get_product_detail(client: TestClient, sample_product_with_price, sample_retailer):
+    product_id = sample_product_with_price.id
+    response = client.get(f"/products/{product_id}")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == product_id
+    assert data["name"] == "Linen Shirt"
+    assert data["retailer_name"] == sample_retailer.name
+    assert data["latest_price"]["amount"] == 89.0
+
+
+def test_get_product_not_found(client: TestClient):
+    response = client.get("/products/999999")
+    assert response.status_code == 404
+
+
 def test_list_retailers(client: TestClient, sample_retailer):
     response = client.get("/retailers")
     assert response.status_code == 200

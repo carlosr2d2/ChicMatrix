@@ -19,17 +19,24 @@ function RecommendationCard({ item }: { item: RecommendationItem }) {
 
   return (
     <article className="group">
-      <div className="relative aspect-[3/4] overflow-hidden bg-sand mb-4">
-        <ProductImage src={product.image_url} alt={product.name} />
-      </div>
-      <div className="flex items-baseline justify-between gap-2 mb-1">
-        <p className="text-xs tracking-widest uppercase text-stone-500">
-          {product.brand ?? best_price?.retailer_name ?? "ChicMatrix"}
-        </p>
-        <p className="text-xs text-stone-400 tabular-nums">Match {score.toFixed(1)}</p>
-      </div>
-      <h3 className="text-sm font-medium mb-1">{product.name}</h3>
-      <p className="text-sm text-stone-600 mb-2">{formatRecommendationPrice(best_price)}</p>
+      <Link
+        href={`/products/${product.id}`}
+        className="block focus:outline-none focus-visible:ring-1 focus-visible:ring-ink"
+      >
+        <div className="relative aspect-[3/4] overflow-hidden bg-sand mb-4">
+          <ProductImage src={product.image_url} alt={product.name} />
+        </div>
+        <div className="flex items-baseline justify-between gap-2 mb-1">
+          <p className="text-xs tracking-widest uppercase text-stone-500">
+            {product.brand ?? best_price?.retailer_name ?? "ChicMatrix"}
+          </p>
+          <p className="text-xs text-stone-400 tabular-nums">Match {score.toFixed(1)}</p>
+        </div>
+        <h3 className="text-sm font-medium mb-1 group-hover:underline underline-offset-4 decoration-stone-300">
+          {product.name}
+        </h3>
+        <p className="text-sm text-stone-600 mb-2">{formatRecommendationPrice(best_price)}</p>
+      </Link>
       <StyleChips
         className="mb-2"
         tags={(product.style_tags ?? []).map((tag) => ({

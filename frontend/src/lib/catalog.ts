@@ -51,8 +51,17 @@ export type ScrapeResponse = {
   message: string;
 };
 
+export type FetchProductsParams = {
+  limit?: number;
+  offset?: number;
+  style?: string | null;
+  retailerId?: number | null;
+};
+
 export const catalogKeys = {
-  products: ["catalog", "products"] as const,
+  products: (params: FetchProductsParams = {}) =>
+    ["catalog", "products", params] as const,
+  product: (id: number) => ["catalog", "product", id] as const,
   retailers: ["catalog", "retailers"] as const,
 };
 
@@ -64,10 +73,31 @@ async function parseJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function fetchProducts(apiUrl?: string): Promise<ProductListResponse> {
+export async function fetchProducts(
+  params: FetchProductsParams = {},
+  apiUrl?: string,
+): Promise<ProductListResponse> {
   const baseUrl = apiUrl ?? getApiUrl();
-  const response = await fetch(`${baseUrl}/products?limit=24`, { cache: "no-store" });
+  const search = new URLSearchParams();
+  search.set("limit", String(params.limit ?? 24));
+  search.set("offset", String(params.offset ?? 0));
+  if (params.style) search.set("style", params.style);
+  if (params.retailerId) search.set("retailer_id", String(params.retailerId));
+  const response = await fetch(`${baseUrl}/products?${search.toString()}`, {
+    cache: "no-store",
+  });
   return parseJson<ProductListResponse>(response);
+}
+
+export async function fetchProduct(
+  productId: number,
+  apiUrl?: string,
+): Promise<ProductListItem> {
+  const baseUrl = apiUrl ?? getApiUrl();
+  const response = await fetch(`${baseUrl}/products/${productId}`, {
+    cache: "no-store",
+  });
+  return parseJson<ProductListItem>(response);
 }
 
 export async function fetchRetailers(apiUrl?: string): Promise<RetailerListResponse> {

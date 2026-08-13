@@ -65,6 +65,10 @@ describe("RecommendationsGrid", () => {
     expect(screen.getByText(/Best at Urban Loom/i)).toBeInTheDocument();
     expect(screen.getByText(/Preferred brand: Urban Loom/i)).toBeInTheDocument();
     expect(screen.getByText(/Match 4.5/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Linen Shirt/i })).toHaveAttribute(
+      "href",
+      "/products/1",
+    );
   });
 
   it("falls back to retailer name when brand is missing", async () => {

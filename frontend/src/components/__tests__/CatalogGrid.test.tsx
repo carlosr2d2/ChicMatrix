@@ -46,8 +46,31 @@ describe("CatalogGrid", () => {
     expect(await screen.findByText("Structured Wool Blazer")).toBeInTheDocument();
     expect(screen.getByText("$289")).toBeInTheDocument();
     expect(screen.getByText(/1 items/i)).toBeInTheDocument();
-    expect(screen.getByText("Formales")).toBeInTheDocument();
+    expect(screen.getAllByText("Formales").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("link", { name: /Structured Wool Blazer/i })).toHaveAttribute(
+      "href",
+      "/products/1",
+    );
+    expect(screen.getByRole("button", { name: /^All$/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Update prices/i })).not.toBeInTheDocument();
+  });
+
+  it("filters by style when a chip is selected", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => sampleProducts,
+    }) as jest.Mock;
+
+    renderWithQuery(<CatalogGrid />);
+    expect(await screen.findByText("Structured Wool Blazer")).toBeInTheDocument();
+
+    screen.getByRole("button", { name: /^Formales$/i }).click();
+
+    await screen.findByText(/· formal/i);
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("style=formal"),
+      expect.any(Object),
+    );
   });
 
   it("shows empty state without customer scrape actions", async () => {
