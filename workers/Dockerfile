@@ -16,4 +16,6 @@ COPY workers/ ./workers/
 ENV PYTHONPATH=/app/backend:/app
 ENV PYTHONUNBUFFERED=1
 
+RUN mkdir -p /app/celerybeat
+
 CMD ["celery", "-A", "workers.celery_app", "worker", "--loglevel=info", "-Q", "scraping", "-c", "4"]

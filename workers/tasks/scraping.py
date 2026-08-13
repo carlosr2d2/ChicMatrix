@@ -5,6 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.services.image_cache import backfill_product_images
+from app.services.scheduled_scraping import enqueue_scrapes_for_active_retailers
 from app.services.scraping import ScrapingService
 from workers.celery_app import celery_app
 
@@ -27,6 +28,27 @@ def scrape_retailer(self, retailer_id: int):
         return result
     except Exception as exc:
         logger.exception("Scrape task failed", extra={"retailer_id": retailer_id})
+        raise self.retry(exc=exc, countdown=60)
+    finally:
+        db.close()
+
+
+@celery_app.task(
+    name="workers.tasks.scraping.enqueue_active_retailer_scrapes",
+    bind=True,
+    max_retries=2,
+)
+def enqueue_active_retailer_scrapes(self):
+    db = SessionLocal()
+    try:
+        return enqueue_scrapes_for_active_retailers(
+            db,
+            enqueue_fn=lambda retailer_id: scrape_retailer.apply_async(
+                args=[retailer_id], queue="scraping"
+            ).id,
+        )
+    except Exception as exc:
+        logger.exception("Failed to enqueue scheduled retailer scrapes")
         raise self.retry(exc=exc, countdown=60)
     finally:
         db.close()

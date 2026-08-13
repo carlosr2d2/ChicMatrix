@@ -7,6 +7,8 @@ from pythonjsonlogger import jsonlogger
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend")))
 
+from app.services.beat_schedule import build_beat_schedule
+
 broker_url = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
 result_backend = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/1")
 
@@ -21,6 +23,8 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     task_acks_late=True,
     imports=("workers.tasks.scraping",),
+    beat_schedule=build_beat_schedule(),
+    beat_schedule_filename="/app/celerybeat/celerybeat-schedule",
 )
 
 from workers.tasks import scraping  # noqa: E402, F401

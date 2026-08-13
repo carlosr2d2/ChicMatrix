@@ -29,6 +29,11 @@ Thumbs.db
 backend/media/
 media/
 
+# Celery Beat schedule file
+celerybeat-schedule
+celerybeat-schedule.*
+workers/celerybeat/
+
 # Test
 .coverage
 htmlcov/

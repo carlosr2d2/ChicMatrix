@@ -8,17 +8,20 @@ Personalized fashion platform with price scraping, built with FastAPI, Next.js, 
 Frontend (Next.js) -> Backend (FastAPI) -> PostgreSQL
                          |
                     Redis <-> Celery Workers
+                         |         ^
+                         |    Celery Beat (schedules)
                          |
               Flower / Prometheus / Grafana
 ```
 
-Product data flow (scrapes are **admin-only**, customers only read):
+Product data flow (scrapes are **admin-only** or **scheduled**, customers only read):
 
 ```
 Admin UI / POST /scrape/{id}
+   or Celery Beat (daily UTC)
         → Redis queue
         → Celery worker (fixture or HTTP/Playwright)
-        → products + prices
+        → products + prices (+ optional image cache)
 Customers → GET /products, PATCH profile, GET /recommend/me
 ```
 
@@ -61,9 +64,10 @@ Customers never trigger scrapes. Only admins enqueue work; workers write the cat
 
 ### System-ready checklist
 
-- [ ] `docker compose ps` — backend, frontend, worker, db, redis healthy
+- [ ] `docker compose ps` — backend, frontend, worker, beat, db, redis healthy
 - [ ] `/health` returns ok
 - [ ] At least one scrape task SUCCEEDED in Flower
+- [ ] Scheduled scrape entries appear in Beat / Flower after the UTC window (or set `SCHEDULED_SCRAPE_INTERVAL_MINUTES`)
 - [ ] `GET /products` returns items with `latest_price` and `image_url`
 - [ ] Demo user can open `/profile` and save preferences
 - [ ] `/recommendations` shows scored items (or a clear empty state if catalog is empty)
@@ -168,6 +172,24 @@ Fixtures live in `backend/fixtures/scraping/`. The worker parses them with the s
 Scraped images are downloaded to a shared Docker volume (`product_media` → `MEDIA_ROOT=/app/media`) and served at `GET /media/products/{id}.ext`. The DB keeps the remote original in `image_source_url` and a local `/media/...` path in `image_url` (API responses absolutize with `API_BASE_URL`). Disable per retailer with `"cache_images": false` in `scraping_config`.
 
 To cache images for products that still point at remote URLs **without re-scraping**, admins can enqueue `POST /scrape/images/backfill` (also a button on `/admin`).
+
+### Scheduled scrapes (Celery Beat)
+
+The `beat` service runs Celery Beat and enqueues work on a UTC schedule (no admin click required):
+
+| Job | Default | Task |
+|-----|---------|------|
+| Scrape all active retailers | daily 06:00 UTC | `enqueue_active_retailer_scrapes` |
+| Image backfill | daily 07:00 UTC | `backfill_product_images` |
+
+Toggle / tune with env on `worker` and `beat`:
+
+- `SCHEDULED_SCRAPES_ENABLED`, `SCHEDULED_IMAGE_BACKFILL_ENABLED`
+- `SCHEDULED_SCRAPE_HOUR_UTC` / `SCHEDULED_SCRAPE_MINUTE_UTC`
+- `SCHEDULED_IMAGE_BACKFILL_HOUR_UTC` / `SCHEDULED_IMAGE_BACKFILL_MINUTE_UTC`
+- `SCHEDULED_SCRAPE_INTERVAL_MINUTES` (if > 0, uses interval instead of crontab — useful for demos)
+
+Watch runs in Flower (`http://localhost:5556`).
 
 Closed style vocabulary v1: `formal`, `sport`, `biker`, `rocker`, `casual`, `minimal`, `streetwear`.
 

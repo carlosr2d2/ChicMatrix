@@ -147,7 +147,8 @@ export function AdminPageClient() {
         <p className="text-stone-600 font-light mb-10 max-w-2xl">
           Only system administrators can enqueue scrape jobs. Workers process them asynchronously
           and update products and prices for all customers. Use image backfill to cache remote
-          product photos locally without re-scraping listings.
+          product photos locally without re-scraping listings. Celery Beat also runs daily scrapes
+          and image backfill on a UTC schedule (see README).
         </p>
 
         <div className="flex flex-wrap gap-3 mb-8">
