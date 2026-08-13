@@ -152,6 +152,26 @@ Closed style vocabulary v1: `formal`, `sport`, `biker`, `rocker`, `casual`, `min
 
 Filter catalog by style: `GET /products?style=formal`.
 
+## Style classifier evaluation (F0)
+
+Frozen gold set (397 labeled products) lives in `backend/fixtures/style_gold/gold_set.jsonl`. Labels are multi-label against the closed vocabulary.
+
+| Subset | Role |
+|--------|------|
+| `lexicon` | Wording F0 should catch (regression floor) |
+| `paraphrase` | Human-true styles with synonyms F0 may miss |
+| `overlap` | Multi-label (e.g. biker+rocker) |
+| `negative` | No style tags |
+
+```bash
+docker compose exec backend python -m app.services.style_eval
+# or locally: cd backend && python -m app.services.style_eval
+```
+
+Baseline snapshot (`rules-v1`, see `backend/fixtures/style_gold/f0_baseline.json`): micro-F1 **0.86**, lexicon F1 **1.00**, paraphrase F1 **0.13**. Precision is high; the paraphrase recall gap is the reason to invest in F1 NLP rather than loosening F0 rules blindly.
+
+Regenerate the gold file only if the taxonomy changes: `cd backend && python scripts/generate_style_gold.py`.
+
 ```json
 {
   "engine": "httpx",

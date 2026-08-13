@@ -1,0 +1,111 @@
+{
+  "model_version": "rules-v1",
+  "gold_size": 397,
+  "exact_match": 0.733,
+  "micro_precision": 1.0,
+  "micro_recall": 0.7476,
+  "micro_f1": 0.8556,
+  "macro_f1": 0.8458,
+  "per_tag": [
+    {
+      "tag": "formal",
+      "support": 70,
+      "precision": 1.0,
+      "recall": 0.5714,
+      "f1": 0.7273,
+      "tp": 40,
+      "fp": 0,
+      "fn": 30
+    },
+    {
+      "tag": "sport",
+      "support": 59,
+      "precision": 1.0,
+      "recall": 0.5932,
+      "f1": 0.7447,
+      "tp": 35,
+      "fp": 0,
+      "fn": 24
+    },
+    {
+      "tag": "biker",
+      "support": 72,
+      "precision": 1.0,
+      "recall": 0.9444,
+      "f1": 0.9714,
+      "tp": 68,
+      "fp": 0,
+      "fn": 4
+    },
+    {
+      "tag": "rocker",
+      "support": 68,
+      "precision": 1.0,
+      "recall": 0.8235,
+      "f1": 0.9032,
+      "tp": 56,
+      "fp": 0,
+      "fn": 12
+    },
+    {
+      "tag": "casual",
+      "support": 65,
+      "precision": 1.0,
+      "recall": 0.8154,
+      "f1": 0.8983,
+      "tp": 53,
+      "fp": 0,
+      "fn": 12
+    },
+    {
+      "tag": "minimal",
+      "support": 43,
+      "precision": 1.0,
+      "recall": 0.7209,
+      "f1": 0.8378,
+      "tp": 31,
+      "fp": 0,
+      "fn": 12
+    },
+    {
+      "tag": "streetwear",
+      "support": 43,
+      "precision": 1.0,
+      "recall": 0.7209,
+      "f1": 0.8378,
+      "tp": 31,
+      "fp": 0,
+      "fn": 12
+    }
+  ],
+  "by_subset": {
+    "lexicon": {
+      "n": 212,
+      "exact_match": 1.0,
+      "micro_precision": 1.0,
+      "micro_recall": 1.0,
+      "micro_f1": 1.0
+    },
+    "negative": {
+      "n": 24,
+      "exact_match": 1.0,
+      "micro_precision": 0.0,
+      "micro_recall": 0.0,
+      "micro_f1": 0.0
+    },
+    "overlap": {
+      "n": 47,
+      "exact_match": 1.0,
+      "micro_precision": 1.0,
+      "micro_recall": 1.0,
+      "micro_f1": 1.0
+    },
+    "paraphrase": {
+      "n": 114,
+      "exact_match": 0.0702,
+      "micro_precision": 1.0,
+      "micro_recall": 0.0702,
+      "micro_f1": 0.1311
+    }
+  }
+}
