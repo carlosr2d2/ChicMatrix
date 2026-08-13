@@ -24,7 +24,7 @@ function RecommendationCard({ item }: { item: RecommendationItem }) {
       </div>
       <div className="flex items-baseline justify-between gap-2 mb-1">
         <p className="text-xs tracking-widest uppercase text-stone-500">
-          {product.brand ?? "ChicMatrix"}
+          {product.brand ?? best_price?.retailer_name ?? "ChicMatrix"}
         </p>
         <p className="text-xs text-stone-400 tabular-nums">Match {score.toFixed(1)}</p>
       </div>

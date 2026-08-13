@@ -223,9 +223,84 @@ def test_scrape_live_http_fixture_snapshot(db_session):
     assert blue.product_url and blue.product_url.endswith("/product_details/1")
     assert blue.image_url and "get_product_picture/1" in blue.image_url
     assert blue.category == "casual"
+    assert blue.brand == "Practice Boutique Fixture"
+    assert blue.color == "blue"
+    assert blue.description and "Blue Top" in blue.description
 
     prices = db_session.query(Price).filter(Price.retailer_id == retailer.id).all()
     assert any(p.amount == 500.0 and p.currency == "INR" for p in prices)
+
+
+def test_extract_detail_fields_from_practice_pdp():
+    html = """
+    <div class="product-information">
+      <h2>Blue Top</h2>
+      <p>Category: Women &gt; Tops</p>
+      <p><b>Brand:</b> Polo</p>
+    </div>
+    """
+    detail = ScrapingService.extract_detail_fields(html, {"root": ".product-information"})
+    assert detail["brand"] == "Polo"
+    assert detail["category_label"] == "Women > Tops"
+
+
+def test_infer_color_from_text():
+    assert ScrapingService.infer_color_from_text("Summer White Top") == "white"
+    assert ScrapingService.infer_color_from_text("Linen Shirt") is None
+
+
+def test_enrich_product_details_merges_pdp(monkeypatch, db_session):
+    retailer = Retailer(
+        name="Enrich Shop",
+        base_url="https://automationexercise.com",
+        scraping_config={
+            "engine": "httpx",
+            "listing_url": "fixture://automation_exercise_products.html",
+            "enrich_product_details": True,
+            "request_delay_ms": 0,
+            "detail_selectors": {"root": ".product-information"},
+            "currency": "INR",
+            "selectors": {
+                "item": ".product-image-wrapper",
+                "name": ".productinfo p",
+                "price": ".productinfo h2",
+                "image": ".productinfo img",
+                "link": "a[href*='product_details']",
+                "default_category": "casual",
+            },
+        },
+        is_active=True,
+    )
+    db_session.add(retailer)
+    db_session.commit()
+    db_session.refresh(retailer)
+
+    pdp_html = """
+    <div class="product-information">
+      <h2>Blue Top</h2>
+      <p>Category: Women > Tops</p>
+      <p><b>Brand:</b> Polo</p>
+    </div>
+    """
+
+    def fake_fetch(url, config, headers):
+      if "product_details" in url:
+        return pdp_html
+      return ScrapingService(db_session)._read_local_listing(url, config)
+
+    service = ScrapingService(db_session)
+    monkeypatch.setattr(service, "_fetch_html", fake_fetch)
+    result = service.scrape_retailer(retailer.id)
+    assert result["details_enriched"] >= 1
+
+    blue = (
+        db_session.query(Product)
+        .filter(Product.retailer_id == retailer.id, Product.name == "Blue Top")
+        .one()
+    )
+    assert blue.brand == "Polo"
+    assert blue.description and "Women > Tops" in blue.description
+    assert blue.color == "blue"
 
 
 def test_polite_delay_skipped_for_fixtures(db_session):

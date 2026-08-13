@@ -69,6 +69,11 @@ LEXICON: dict[StyleCode, list[tuple[str, float]]] = {
         ("knit", 0.25),
         ("weekend", 0.3),
         ("relaxed", 0.25),
+        ("dress", 0.3),
+        ("top", 0.25),
+        ("tshirt", 0.4),
+        ("t-shirt", 0.4),
+        ("shirt", 0.25),
     ],
     StyleCode.MINIMAL: [
         ("minimal", 0.5),

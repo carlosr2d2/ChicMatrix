@@ -67,6 +67,36 @@ describe("RecommendationsGrid", () => {
     expect(screen.getByText(/Match 4.5/i)).toBeInTheDocument();
   });
 
+  it("falls back to retailer name when brand is missing", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        user_id: "user-1",
+        recommendations: [
+          {
+            ...sampleResponse.recommendations[0],
+            product: {
+              ...sampleResponse.recommendations[0].product,
+              brand: null,
+            },
+            best_price: {
+              retailer_id: 4,
+              retailer_name: "Practice Boutique",
+              amount: 500,
+              currency: "INR",
+              scraped_at: "2026-01-01T00:00:00Z",
+            },
+          },
+        ],
+      }),
+    }) as jest.Mock;
+
+    renderWithQuery(<RecommendationsGrid />);
+
+    expect(await screen.findByText("Linen Shirt")).toBeInTheDocument();
+    expect(screen.getByText("Practice Boutique")).toBeInTheDocument();
+  });
+
   it("shows empty guidance when there are no matches", async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,

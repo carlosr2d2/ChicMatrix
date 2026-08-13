@@ -16,6 +16,22 @@ from app.services.style_tagging import apply_style_classification
 
 logger = logging.getLogger(__name__)
 DEFAULT_BOT_UA = "ChicMatrixBot/1.0 (+https://github.com/carlosr2d2/ChicMatrix; demo)"
+COLOR_WORDS = (
+  "black",
+  "white",
+  "blue",
+  "pink",
+  "green",
+  "grey",
+  "gray",
+  "red",
+  "beige",
+  "brown",
+  "yellow",
+  "purple",
+  "orange",
+  "navy",
+)
 
 
 def scraping_fixtures_dir() -> Path:
@@ -39,14 +55,14 @@ class ScrapingService:
 
     config = retailer.scraping_config or {}
     selectors = config.get("selectors", {})
+    headers = config.get("headers") or {"User-Agent": DEFAULT_BOT_UA}
+    if "User-Agent" not in headers:
+      headers = {**headers, "User-Agent": DEFAULT_BOT_UA}
 
     if config.get("demo_items"):
       items = self._demo_items(config["demo_items"])
     else:
       listing_url = config.get("listing_url", retailer.base_url)
-      headers = config.get("headers") or {"User-Agent": DEFAULT_BOT_UA}
-      if "User-Agent" not in headers:
-        headers = {**headers, "User-Agent": DEFAULT_BOT_UA}
       logger.info("Starting scrape", extra={"retailer": retailer.name, "url": listing_url})
 
       html = self._fetch_html(listing_url, config, headers)
@@ -57,11 +73,19 @@ class ScrapingService:
     created = 0
     updated = 0
     classified = 0
+    details_enriched = 0
 
     for idx, item in enumerate(items):
       product_data = self._parse_item(item, selectors, retailer, idx)
       if not product_data:
         continue
+
+      if config.get("enrich_product_details") and self._enrich_product_details(
+        product_data, config, headers
+      ):
+        details_enriched += 1
+
+      self._apply_field_fallbacks(product_data, retailer, selectors)
 
       price_amount = product_data.pop("price", None)
 
@@ -106,6 +130,7 @@ class ScrapingService:
       "products_created": created,
       "products_updated": updated,
       "products_classified": classified,
+      "details_enriched": details_enriched,
       "total": created + updated,
     }
     logger.info("Scrape completed", extra=result)
@@ -218,17 +243,124 @@ class ScrapingService:
     if description_el:
       description = description_el.get_text(" ", strip=True) or None
 
+    brand = brand_el.get_text(strip=True) if brand_el else None
+
     return {
       "external_id": external_id,
       "name": name,
       "description": description,
       "image_url": image_url,
       "product_url": product_url,
-      "brand": brand_el.get_text(strip=True) if brand_el else None,
+      "brand": brand,
       "category": category_el.get_text(strip=True) if category_el else selectors.get("default_category"),
       "color": color,
       "price": price,
     }
+
+  def _enrich_product_details(self, product_data: dict, config: dict, headers: dict) -> bool:
+    """Fetch product PDP to fill brand/category/description when listing cards are thin."""
+    product_url = product_data.get("product_url")
+    if not product_url or not str(product_url).startswith(("http://", "https://")):
+      return False
+
+    try:
+      html = self._fetch_html(product_url, config, headers)
+    except Exception as exc:  # noqa: BLE001 - keep listing scrape resilient
+      logger.warning(
+        "Detail enrich failed",
+        extra={"url": product_url, "error": str(exc)},
+      )
+      return False
+
+    detail = self.extract_detail_fields(html, config.get("detail_selectors") or {})
+    changed = False
+    if detail.get("brand") and not product_data.get("brand"):
+      product_data["brand"] = detail["brand"]
+      changed = True
+    if detail.get("category_label"):
+      # Keep listing default_category for style rules; put PDP taxonomy in description.
+      label = detail["category_label"]
+      existing = product_data.get("description") or product_data.get("name") or ""
+      snippet = f"Category: {label}"
+      if snippet.lower() not in existing.lower():
+        product_data["description"] = f"{existing}. {snippet}".strip(". ").replace("..", ".")
+        changed = True
+    if detail.get("description"):
+      existing = product_data.get("description") or ""
+      if detail["description"] not in existing:
+        product_data["description"] = (
+          f"{existing}. {detail['description']}".strip(". ") if existing else detail["description"]
+        )
+        changed = True
+    return changed
+
+  def _apply_field_fallbacks(self, product_data: dict, retailer: Retailer, selectors: dict) -> None:
+    if not product_data.get("brand"):
+      product_data["brand"] = retailer.name
+    if not product_data.get("color"):
+      product_data["color"] = self.infer_color_from_text(product_data.get("name") or "")
+    if not product_data.get("color"):
+      product_data["color"] = selectors.get("default_color")
+    if not product_data.get("description"):
+      bits = [product_data.get("name") or ""]
+      if product_data.get("category"):
+        bits.append(f"Category: {product_data['category']}")
+      if product_data.get("color"):
+        bits.append(f"Color: {product_data['color']}")
+      product_data["description"] = ". ".join(b for b in bits if b)
+
+  @staticmethod
+  def extract_detail_fields(html: str, detail_selectors: dict) -> dict:
+    soup = BeautifulSoup(html, "lxml")
+    root_sel = detail_selectors.get("root", ".product-information")
+    root = soup.select_one(root_sel) or soup
+
+    brand = None
+    category_label = None
+    description = None
+
+    brand_sel = detail_selectors.get("brand")
+    if brand_sel:
+      el = root.select_one(brand_sel)
+      if el:
+        brand = el.get_text(" ", strip=True) or None
+
+    category_sel = detail_selectors.get("category")
+    if category_sel:
+      el = root.select_one(category_sel)
+      if el:
+        raw = el.get_text(" ", strip=True)
+        category_label = raw.split(":", 1)[-1].strip() if raw else None
+
+    description_sel = detail_selectors.get("description")
+    if description_sel:
+      el = root.select_one(description_sel)
+      if el:
+        description = el.get_text(" ", strip=True) or None
+
+    # Heuristic parse for practice sites that use <p><b>Brand:</b> Polo</p>
+    if not brand or not category_label:
+      for p in root.select("p"):
+        text = p.get_text(" ", strip=True)
+        lower = text.lower()
+        if not category_label and lower.startswith("category:"):
+          category_label = text.split(":", 1)[-1].strip()
+        if not brand and lower.startswith("brand:"):
+          brand = text.split(":", 1)[-1].strip()
+
+    return {
+      "brand": brand or None,
+      "category_label": category_label or None,
+      "description": description or None,
+    }
+
+  @staticmethod
+  def infer_color_from_text(text: str) -> str | None:
+    tokens = set(re.findall(r"[a-z]+", (text or "").lower()))
+    for color in COLOR_WORDS:
+      if color in tokens:
+        return color
+    return None
 
   def _demo_items(self, demo_items: list[dict]) -> list:
     """Build synthetic DOM nodes from seed data for offline/demo retailers."""

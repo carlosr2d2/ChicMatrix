@@ -155,7 +155,8 @@ A fourth seeded retailer hits a **public practice fashion catalog** over real HT
 | Name | Practice Boutique |
 | URL | `https://automationexercise.com/products` |
 | Engine | `httpx` |
-| Politeness | `request_delay_ms: 750` + identifying `User-Agent` |
+| Politeness | `request_delay_ms` + identifying `User-Agent` |
+| Enrichment | Optional PDP fetch (`enrich_product_details`) for brand/category text |
 
 Offline CI uses the same DOM snapshot: `fixture://automation_exercise_products.html`.
 

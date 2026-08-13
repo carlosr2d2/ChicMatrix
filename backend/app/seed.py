@@ -86,7 +86,11 @@ DEMO_RETAILERS = [
             # Live HTTP listing (admin-triggered, single page). Offline tests use
             # fixture://automation_exercise_products.html with the same selectors.
             "listing_url": "https://automationexercise.com/products",
-            "request_delay_ms": 750,
+            "request_delay_ms": 500,
+            "enrich_product_details": True,
+            "detail_selectors": {
+                "root": ".product-information",
+            },
             "headers": {
                 "User-Agent": (
                     "ChicMatrixBot/1.0 (+https://github.com/carlosr2d2/ChicMatrix; demo)"
